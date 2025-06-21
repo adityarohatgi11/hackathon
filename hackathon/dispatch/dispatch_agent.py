@@ -108,7 +108,6 @@ def emergency_response(system_state: Dict[str, Any]) -> Dict[str, Any]:
     # Check for emergency conditions
     temp = system_state.get('temperature', 65.0)
     soc = system_state.get('soc', 0.5)
-    power = system_state.get('total_power_kw', 0.0)
     
     if temp > 80:  # Critical temperature
         response['emergency_level'] = 2

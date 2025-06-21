@@ -1,6 +1,5 @@
 """Cooling system model for GPU workload management."""
 
-import numpy as np
 from typing import Tuple, Dict, Any
 
 

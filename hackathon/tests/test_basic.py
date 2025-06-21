@@ -1,6 +1,5 @@
 """Basic tests for GridPilot-GT system."""
 
-import pytest
 import pandas as pd
 from api_client import get_prices, get_inventory
 from forecasting import Forecaster
