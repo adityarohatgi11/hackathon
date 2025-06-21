@@ -333,19 +333,34 @@ class Forecaster:
 
         # Estimate trend from recent data (if available)
         if len(prices) >= 24 and 'price' in prices.columns:
-            recent_trend = (prices['price'].tail(24).mean() - prices['price'].head(24).mean()) / 24
+            recent_prices = prices['price'].tail(24)
+            recent_trend = (recent_prices.iloc[-1] - recent_prices.iloc[0]) / 24
+            # Dampen extreme trends
+            recent_trend = np.clip(recent_trend, -0.5, 0.5)
         else:
             recent_trend = 0
         
-        # Seasonal pattern (daily cycle)
+        # Seasonal pattern (daily cycle) - scale with price level
         hours = np.array([t.hour for t in future_times])
-        seasonal = 10 * np.sin(2 * np.pi * hours / 24)
+        # Peak hours (8-20) have higher prices, off-peak lower
+        peak_factor = 1.0 + 0.3 * np.sin(np.pi * (hours - 6) / 12)
+        peak_factor = np.where((hours >= 8) & (hours <= 20), peak_factor, 0.8)
         
-        # Generate predictions
-        trend_component = np.arange(periods) * recent_trend
-        noise = np.random.normal(0, 2, periods)
+        # Generate predictions with mean reversion
+        predictions = []
+        current_pred = last_price
         
-        predictions = last_price + trend_component + seasonal + noise
+        for i in range(periods):
+            # Mean reversion to last price with trend and seasonality
+            mean_reversion = (last_price - current_pred) * 0.1  # 10% reversion
+            trend_component = recent_trend
+            seasonal_component = (peak_factor[i] - 1.0) * last_price * 0.2
+            noise = np.random.normal(0, last_price * 0.05)  # 5% noise
+            
+            current_pred = current_pred + mean_reversion + trend_component + seasonal_component + noise
+            predictions.append(current_pred)
+        
+        predictions = np.array(predictions)
         # CRITICAL: Ensure all predictions are positive and reasonable
         predictions = np.maximum(predictions, 0.01)
         predictions = np.minimum(predictions, 500.0)  # Cap extreme values
@@ -462,12 +477,30 @@ class Forecaster:
         forecast_df['upper_bound'] = np.minimum(forecast_df['upper_bound'], max_reasonable_price)
         forecast_df['lower_bound'] = np.minimum(forecast_df['lower_bound'], forecast_df['upper_bound'])
         
+        # CRITICAL: Ensure predictions are reasonable relative to current price
+        if len(prices) > 0 and 'price' in prices.columns:
+            current_price = prices['price'].iloc[-1]
+            # If predictions are too far from current price, adjust them
+            price_ratio = forecast_df['predicted_price'] / current_price
+            if np.mean(price_ratio) < 0.5 or np.mean(price_ratio) > 2.0:
+                # Blend with current price for more stable predictions
+                forecast_df['predicted_price'] = 0.7 * forecast_df['predicted_price'] + 0.3 * current_price
+                logger.warning(f"Adjusted predictions to be closer to current price: ${current_price:.2f}")
+        
         # Add uncertainty metrics for compatibility
         uncertainty = (forecast_df['upper_bound'] - forecast_df['lower_bound']) / 2
         
-        # CRITICAL: Cap uncertainty to reasonable bounds (max 20% of price or $50/MWh)
-        max_uncertainty = np.minimum(forecast_df['predicted_price'] * 0.2, 50.0)
+        # CRITICAL: Ensure minimum uncertainty for realistic prediction intervals
+        min_uncertainty = forecast_df['predicted_price'] * 0.05  # At least 5% uncertainty
+        uncertainty = np.maximum(uncertainty, min_uncertainty)
+        
+        # CRITICAL: Cap uncertainty to reasonable bounds (max 30% of price or $50/MWh)
+        max_uncertainty = np.minimum(forecast_df['predicted_price'] * 0.3, 50.0)
         uncertainty = np.minimum(uncertainty, max_uncertainty)
+        
+        # Update bounds with corrected uncertainty
+        forecast_df['lower_bound'] = np.maximum(forecast_df['predicted_price'] - uncertainty, 0.01)
+        forecast_df['upper_bound'] = forecast_df['predicted_price'] + uncertainty
         
         forecast_df['σ_energy'] = uncertainty.astype(np.float64)
         forecast_df['σ_hash'] = (uncertainty * 0.5).astype(np.float64)

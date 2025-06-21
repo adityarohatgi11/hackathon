@@ -76,11 +76,11 @@ class TestLaneABIntegration:
             lambda_deg=0.0002
         )
         
-        constraints = {'max_power': 1.0, 'cvar_limit': 0.05}
+        constraints = {'max_power': 1000.0, 'cvar_limit': 0.05}  # Updated to kW scale
         optimized_bids = portfolio_optimization(bids, constraints)
         
         assert len(optimized_bids) == 24
         assert all(optimized_bids['energy_bid'] > 0)
         
         total_allocation = optimized_bids[['inference', 'training', 'cooling']].sum(axis=1)
-        assert all(total_allocation <= 1.1)  # Allow small numerical errors
+        assert all(total_allocation <= 1100.0)  # Updated to kW scale with 10% buffer

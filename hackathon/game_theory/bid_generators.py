@@ -69,16 +69,18 @@ def build_bid_vector(
     # ------------------------------------------------------------------
     # 3. Assemble DataFrame – follow the shared interface contract.
     # ------------------------------------------------------------------
+    # CRITICAL: Keep power allocations in kW for VCG auction compatibility
+    # The VCG auction expects kW values, not per-unit
     df = pd.DataFrame(
         {
             "timestamp": forecast["timestamp"],
             "energy_bid": adjusted_prices,
             "regulation_bid": adjusted_prices * 1.2,
             "spinning_reserve_bid": adjusted_prices * 0.8,
-            # For GPU allocations we use a simple proportional split.
-            "inference": energy_kw * 0.4 / 1000,  # convert back to p.u.
-            "training": energy_kw * 0.3 / 1000,
-            "cooling": energy_kw * 0.3 / 1000,
+            # For GPU allocations we use a simple proportional split in kW
+            "inference": energy_kw * 0.4,  # kW for inference workloads
+            "training": energy_kw * 0.3,   # kW for training workloads
+            "cooling": energy_kw * 0.3,    # kW for cooling systems
         }
     )
 

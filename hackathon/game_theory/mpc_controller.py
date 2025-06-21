@@ -155,7 +155,26 @@ class MPCController:
                 pass  # Fall back to heuristic.
 
         # Fallback heuristic (robust and fast) -----------------------------
-        heuristic_bids = np.minimum(prices / np.max(prices) * p_available, p_available * 0.9)
+        # CRITICAL: Generate more reasonable power allocations
+        # Scale bids based on price attractiveness and available capacity
+        max_price = np.max(prices)
+        min_price = np.min(prices)
+        price_range = max_price - min_price
+        
+        if price_range > 0:
+            # Normalize prices to 0-1 range
+            normalized_prices = (prices - min_price) / price_range
+            # Allocate more power when prices are higher
+            base_allocation = p_available * 0.3  # Base 30% allocation
+            price_bonus = normalized_prices * p_available * 0.4  # Up to 40% bonus for high prices
+            heuristic_bids = base_allocation + price_bonus
+        else:
+            # If all prices are the same, use a constant allocation
+            heuristic_bids = np.full(len(prices), p_available * 0.5)
+        
+        # Ensure bids are within reasonable bounds
+        heuristic_bids = np.clip(heuristic_bids, p_available * 0.1, p_available * 0.9)
+        
         return {"status": "heuristic", "energy_bids": heuristic_bids}
 
     def update_constraints(self, new_constraints: Dict[str, Any]) -> None:

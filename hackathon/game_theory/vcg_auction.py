@@ -41,8 +41,12 @@ def vcg_allocate(bids_df: pd.DataFrame, capacity_kw: float) -> Tuple[Dict[str, f
     """
     Optimized VCG auction allocation with <10ms performance target.
     
+    CRITICAL: For time-series data (multiple periods), this function processes
+    the current period only. Multi-period optimization should be handled by
+    the MPC controller.
+    
     Args:
-        bids_df: DataFrame with bid data
+        bids_df: DataFrame with bid data (if multiple periods, uses the first/current period)
         capacity_kw: Total available capacity
         
     Returns:
@@ -54,21 +58,46 @@ def vcg_allocate(bids_df: pd.DataFrame, capacity_kw: float) -> Tuple[Dict[str, f
     if bids_df.empty or capacity_kw <= 0:
         return {}, {}
     
-    # Fast path for single bidder
-    if len(bids_df) == 1:
-        services = ['inference', 'training', 'cooling']
-        total_demand = sum(bids_df.iloc[0].get(service, 0) for service in services)
+    # CRITICAL: For multi-period data, use only the current period (first row)
+    # This represents the immediate allocation decision
+    if len(bids_df) > 1:
+        # Use the first period for current allocation
+        current_period = bids_df.iloc[[0]].copy()
+        logger.info(f"VCG auction processing current period from {len(bids_df)} periods")
+    else:
+        current_period = bids_df
+    
+    # Single period allocation
+    services = ['inference', 'training', 'cooling']
+    total_demand = sum(current_period.iloc[0].get(service, 0) for service in services)
+    
+    if total_demand <= capacity_kw:
+        allocation = {service: current_period.iloc[0].get(service, 0) for service in services}
+        payments = {service: 0.0 for service in services}  # No competition = no payment
+    else:
+        # Scale down proportionally when demand exceeds capacity
+        scale = capacity_kw / total_demand
+        allocation = {service: current_period.iloc[0].get(service, 0) * scale for service in services}
         
-        if total_demand <= capacity_kw:
-            allocation = {service: bids_df.iloc[0].get(service, 0) for service in services}
-            payments = {service: 0.0 for service in services}  # No competition = no payment
-        else:
-            # Scale down proportionally
-            scale = capacity_kw / total_demand
-            allocation = {service: bids_df.iloc[0].get(service, 0) * scale for service in services}
-            payments = {service: 0.0 for service in services}
-        
-        return allocation, payments
+        # Calculate payments based on scarcity
+        payments = {}
+        for service in services:
+            bid_col = f"{service}_bid"
+            if bid_col in current_period.columns:
+                avg_bid = current_period[bid_col].iloc[0]
+                # Payment proportional to allocation and bid price
+                payments[service] = allocation[service] * avg_bid * 0.1
+            else:
+                # Use energy_bid as fallback
+                avg_bid = current_period['energy_bid'].iloc[0]
+                payments[service] = allocation[service] * avg_bid * 0.1
+    
+    # Performance check
+    elapsed_ms = (time.perf_counter() - start_time) * 1000
+    if elapsed_ms > 10.0:
+        print(f"⚠️ VCG auction took {elapsed_ms:.2f}ms (>10ms target)")
+    
+    return allocation, payments
     
     try:
         # Pre-allocate arrays for performance
