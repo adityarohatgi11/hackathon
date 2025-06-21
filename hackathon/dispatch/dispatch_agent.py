@@ -231,8 +231,11 @@ def build_payload(allocation: Dict[str, float], inventory: Dict[str, Any],
     
     # Emergency power scaling if needed
     scale_factor = 1.0
-    if not constraints_satisfied and total_power > power_limit:
-        scale_factor = power_limit / total_power * 0.9  # 90% of limit for safety
+    if total_power > power_limit:
+        # Scale GPU power so that (GPU * s) + cooling <= power_limit
+        # Ensure we do not exceed the limit even with rounding errors
+        safe_gpu_capacity = max(power_limit - cooling_kw, 0)
+        scale_factor = safe_gpu_capacity / max(gpu_power, 1e-6)
         gpu_power *= scale_factor
         total_power = gpu_power + cooling_kw
         constraints_satisfied = True  # Now within limits
@@ -404,7 +407,7 @@ def emergency_response(system_state: Dict[str, Any]) -> Dict[str, Any]:
         response['estimated_recovery_time'] = 60  # 1 minute
     
     # Temperature emergencies with cascading response
-    if temp > 85:  # Critical temperature - immediate action
+    if temp >= 85:  # Critical temperature - immediate action
         response['emergency_level'] = max(response['emergency_level'], EmergencyLevel.SHUTDOWN.value)
         response['actions'].extend(['EMERGENCY_SHUTDOWN', 'MAXIMUM_COOLING'])
         response['power_reduction'] = max(response['power_reduction'], 1.0)

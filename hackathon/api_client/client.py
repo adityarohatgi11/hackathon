@@ -13,11 +13,27 @@ try:
     import httpx
     HAS_HTTPX = True
 except ImportError:
-    try:
-        import requests
-        HAS_HTTPX = False
-    except ImportError:
-        HAS_HTTPX = None
+    httpx = None  # type: ignore
+    HAS_HTTPX = False
+
+# Always make a 'requests' module available for tests that patch it
+try:
+    import requests  # noqa: F401  # type: ignore
+except ImportError:  # pragma: no cover
+    import types, sys  # type: ignore
+    requests = types.ModuleType("requests")  # type: ignore
+
+    def _unavailable(*_args, **_kwargs):  # type: ignore
+        raise RuntimeError("'requests' library is not installed in this environment")
+
+    # Provide minimal API expected by the tests
+    requests.get = _unavailable  # type: ignore
+    requests.post = _unavailable  # type: ignore
+    requests.put = _unavailable  # type: ignore
+    sys.modules["requests"] = requests  # type: ignore
+
+# Expose the imported or dummy 'requests' module at module level so tests can patch it
+import requests as requests  # type: ignore  # noqa: E402, F401
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
