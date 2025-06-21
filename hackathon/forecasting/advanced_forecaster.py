@@ -433,4 +433,23 @@ class QuantitativeForecaster(Forecaster):
             except:
                 pass
         
-        return base_volatility 
+        return base_volatility
+
+
+def create_advanced_forecaster(**kwargs) -> 'QuantitativeForecaster':
+    """Factory function to create QuantitativeForecaster with proper error handling.
+    
+    Returns:
+        QuantitativeForecaster instance
+    """
+    try:
+        logger.info("Creating QuantitativeForecaster with advanced quantitative models")
+        return QuantitativeForecaster(**kwargs)
+    except ImportError as e:
+        logger.warning(f"Advanced libraries not available: {e}, falling back to basic forecaster")
+        from .forecaster import Forecaster
+        return Forecaster(**kwargs)
+    except Exception as e:
+        logger.error(f"Error creating QuantitativeForecaster: {e}, falling back to basic forecaster")
+        from .forecaster import Forecaster
+        return Forecaster(**kwargs) 

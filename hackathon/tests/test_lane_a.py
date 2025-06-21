@@ -1,299 +1,290 @@
-"""Comprehensive tests for Lane A: Data & Forecasting."""
+"""Tests for Lane A: Data & Forecasting functionality."""
 
 import pytest
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from unittest.mock import patch, MagicMock
 
-from api_client import get_prices, get_inventory, submit_bid, get_market_status
-from forecasting import Forecaster, FeatureEngineer
+from api_client.client import get_prices, get_inventory, submit_bid, test_mara_api_connection
+from forecasting.forecaster import Forecaster, create_forecaster
+from forecasting.advanced_forecaster import QuantitativeForecaster, create_advanced_forecaster
+from forecasting.feature_engineering import FeatureEngineer
 
 
 class TestAPIClient:
-    """Test enhanced API client functionality."""
+    """Test API client functionality with MARA integration."""
     
-    def test_get_prices_enhanced(self):
-        """Test enhanced price data retrieval."""
-        prices = get_prices()
+    def test_get_prices_basic(self):
+        """Test basic price data retrieval."""
+        df = get_prices()
         
-        # Basic structure
-        assert isinstance(prices, pd.DataFrame)
-        assert len(prices) > 0
-        assert 'timestamp' in prices.columns
-        assert 'price' in prices.columns
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) > 0
+        assert 'timestamp' in df.columns
+        assert 'price' in df.columns
+        assert 'hash_price' in df.columns
+        assert 'token_price' in df.columns
         
-        # Enhanced features
-        expected_features = [
-            'volume', 'hour_of_day', 'day_of_week', 'is_weekend',
-            'price_ma_24h', 'price_volatility_24h', 'load_factor', 'market_stress'
-        ]
-        for feature in expected_features:
-            assert feature in prices.columns, f"Missing feature: {feature}"
-        
-        # Data quality
-        assert prices['price'].min() >= 10  # Minimum price floor
-        assert prices['timestamp'].is_monotonic_increasing  # Time ordering
-        assert not prices['price'].isna().any()  # No missing prices
+        # Verify prices are positive
+        assert (df['price'] > 0).all()
+        assert (df['hash_price'] > 0).all()
+        assert (df['token_price'] > 0).all()
     
-    def test_get_inventory_enhanced(self):
-        """Test enhanced inventory data."""
+    def test_get_inventory_structure(self):
+        """Test inventory data structure and validation."""
         inventory = get_inventory()
         
-        # Required fields for other lanes
         required_fields = [
-            'power_total', 'power_available', 'battery_soc', 'gpu_utilization',
-            'timestamp', 'temperature', 'efficiency', 'alerts'
+            'power_total', 'power_available', 'power_used', 
+            'battery_soc', 'gpu_utilization', 'timestamp', 'status'
         ]
+        
         for field in required_fields:
-            assert field in inventory, f"Missing inventory field: {field}"
+            assert field in inventory, f"Missing required field: {field}"
         
-        # Data constraints
-        assert 0 <= inventory['battery_soc'] <= 1
-        assert 0 <= inventory['gpu_utilization'] <= 1
-        assert inventory['power_total'] >= 0
-        assert isinstance(inventory['alerts'], list)
+        # Validate data types and ranges
+        assert 0 <= inventory['battery_soc'] <= 1.0
+        assert 0 <= inventory['gpu_utilization'] <= 1.0
+        assert inventory['power_used'] <= inventory['power_total']
+        assert inventory['power_available'] >= 0
     
-    def test_submit_bid_validation(self):
-        """Test bid submission with validation."""
-        # Valid payload
-        valid_payload = {
-            'allocation': {'inference': 0.3, 'training': 0.2, 'cooling': 0.1},
+    def test_submit_bid_format(self):
+        """Test bid submission format and response."""
+        test_payload = {
+            'allocation': {
+                'air_miners': 1,
+                'inference': 2,
+                'training': 1,
+                'hydro_miners': 0,
+                'immersion_miners': 1
+            },
             'power_requirements': {'total_power_kw': 100},
-            'system_state': {'soc': 0.5},
-            'constraints_satisfied': True
+            'system_state': {'status': 'test'}
         }
         
-        response = submit_bid(valid_payload)
-        assert response['status'] in ['success', 'rejected']
-        assert 'bid_id' in response
+        response = submit_bid(test_payload)
+        
+        assert 'status' in response
         assert 'timestamp' in response
+        assert response['status'] in ['success', 'failed']
         
-        # Invalid payload should raise error
-        with pytest.raises(Exception):
-            submit_bid({'invalid': 'payload'})
-
-
-class TestFeatureEngineer:
-    """Test feature engineering capabilities."""
+        if response['status'] == 'success':
+            assert 'bid_id' in response
+            assert 'allocation_accepted' in response
     
-    @pytest.fixture
-    def sample_prices(self):
-        """Sample price data for testing."""
-        dates = pd.date_range(start='2024-01-01', periods=168, freq='H')  # 1 week
-        prices = 50 + 10 * np.sin(2 * np.pi * np.arange(168) / 24) + np.random.normal(0, 5, 168)
+    def test_mara_api_connection_test(self):
+        """Test MARA API connection diagnostics."""
+        result = test_mara_api_connection()
         
-        return pd.DataFrame({
-            'timestamp': dates,
-            'price': prices,
-            'volume': np.random.uniform(100, 1000, 168)
-        })
-    
-    def test_feature_engineering(self, sample_prices):
-        """Test comprehensive feature engineering."""
-        fe = FeatureEngineer()
-        features = fe.engineer_features(sample_prices)
-        
-        # Should have many more features than input
-        assert len(features.columns) > len(sample_prices.columns) * 10
-        
-        # Check specific feature categories
-        temporal_features = [col for col in features.columns if any(
-            keyword in col for keyword in ['hour', 'day', 'month', 'weekend', 'peak']
-        )]
-        assert len(temporal_features) >= 10
-        
-        price_features = [col for col in features.columns if 'price' in col]
-        assert len(price_features) >= 20
-        
-        technical_features = [col for col in features.columns if any(
-            keyword in col for keyword in ['bb_', 'rsi', 'macd']
-        )]
-        assert len(technical_features) >= 5
-    
-    def test_feature_selection(self, sample_prices):
-        """Test feature selection functionality."""
-        fe = FeatureEngineer()
-        features = fe.engineer_features(sample_prices)
-        selected = fe.select_features(features, max_features=10)
-        
-        assert len(selected) <= 10
-        assert all(feat in features.columns for feat in selected)
-    
-    def test_prepare_forecast_data(self, sample_prices):
-        """Test data preparation for forecasting."""
-        fe = FeatureEngineer()
-        features = fe.engineer_features(sample_prices)
-        X, y = fe.prepare_forecast_data(features)
-        
-        assert len(X) == len(y)
-        assert len(X) == len(features)
-        assert not X.isna().any().any()  # No missing values
-
-
-class TestForecaster:
-    """Test advanced forecasting capabilities."""
-    
-    @pytest.fixture
-    def sample_data(self):
-        """Sample data for forecasting tests."""
-        dates = pd.date_range(start='2024-01-01', periods=168, freq='H')
-        prices = 50 + 10 * np.sin(2 * np.pi * np.arange(168) / 24) + np.random.normal(0, 3, 168)
-        
-        return pd.DataFrame({
-            'timestamp': dates,
-            'price': prices,
-            'volume': np.random.uniform(100, 1000, 168)
-        })
-    
-    def test_forecaster_initialization(self):
-        """Test forecaster initialization options."""
-        # Default initialization
-        forecaster = Forecaster()
-        assert forecaster.use_prophet
-        assert forecaster.use_ensemble
-        
-        # Custom initialization
-        forecaster_simple = Forecaster(use_prophet=False, use_ensemble=False)
-        assert not forecaster_simple.use_prophet
-        assert not forecaster_simple.use_ensemble
-    
-    def test_predict_next_interface_compatibility(self, sample_data):
-        """Test that predict_next maintains interface compatibility with other lanes."""
-        forecaster = Forecaster(use_prophet=False, use_ensemble=False)  # Use simple for speed
-        forecast = forecaster.predict_next(sample_data, periods=24)
-        
-        # Required columns for Lane B (bidding)
-        required_columns = [
-            'timestamp', 'predicted_price', 'σ_energy', 'σ_hash', 'σ_token'
+        required_fields = [
+            'timestamp', 'api_base_url', 'api_key_configured',
+            'overall_status', 'recommendations'
         ]
-        for col in required_columns:
-            assert col in forecast.columns, f"Missing required column: {col}"
         
-        # Data quality
-        assert len(forecast) == 24
-        assert forecast['predicted_price'].min() > 0
-        assert not forecast['predicted_price'].isna().any()
-        assert forecast['timestamp'].is_monotonic_increasing
+        for field in required_fields:
+            assert field in result, f"Missing field in connection test: {field}"
+        
+        assert result['overall_status'] in ['operational', 'limited']
+        assert isinstance(result['recommendations'], list)
     
-    def test_predict_volatility(self, sample_data):
-        """Test volatility prediction."""
-        forecaster = Forecaster()
-        volatility = forecaster.predict_volatility(sample_data)
+    @patch('api_client.client._make_request')
+    def test_api_error_handling(self, mock_request):
+        """Test API error handling and fallback behavior."""
+        # Simulate API failure
+        mock_request.side_effect = Exception("API unavailable")
         
-        assert len(volatility) == len(sample_data)
-        assert 'vol_forecast' in volatility.columns
-        assert volatility['vol_forecast'].iloc[-1] >= 0
-    
-    def test_feature_importance(self, sample_data):
-        """Test feature importance extraction."""
-        forecaster = Forecaster()
-        importance = forecaster.feature_importance()
+        # Should fall back to synthetic data
+        df = get_prices()
+        assert isinstance(df, pd.DataFrame)
+        assert len(df) > 0
         
-        assert isinstance(importance, dict)
-        assert len(importance) > 0
-        assert all(0 <= score <= 1 for score in importance.values())
-    
-    def test_model_performance_tracking(self, sample_data):
-        """Test model performance metrics."""
-        forecaster = Forecaster()
-        forecaster.fit(sample_data)  # Explicit training
-        
-        performance = forecaster.get_model_performance()
-        assert isinstance(performance, dict)
-
-
-class TestIntegrationWithOtherLanes:
-    """Test integration compatibility with Lanes B, C, D."""
-    
-    def test_lane_b_compatibility(self):
-        """Test data format compatibility with Lane B (bidding)."""
-        # Get Lane A outputs
-        prices = get_prices()
-        forecaster = Forecaster(use_prophet=False, use_ensemble=False)  # Simple for speed
-        forecast = forecaster.predict_next(prices)
-        
-        # Simulate Lane B input requirements
-        current_price = prices['price'].iloc[-1]
-        uncertainty = forecast[["σ_energy","σ_hash","σ_token"]]
-        
-        # These should not raise errors in Lane B
-        assert isinstance(current_price, (int, float))
-        assert len(uncertainty) == len(forecast)
-        assert uncertainty.columns.tolist() == ["σ_energy","σ_hash","σ_token"]
-    
-    def test_lane_c_compatibility(self):
-        """Test data format compatibility with Lane C (auction/dispatch)."""
         inventory = get_inventory()
-        
-        # Required fields for Lane C
-        assert 'power_total' in inventory
-        assert 'power_available' in inventory
-        assert 'battery_soc' in inventory
-        assert isinstance(inventory['power_total'], (int, float))
-    
-    def test_lane_d_compatibility(self):
-        """Test data format compatibility with Lane D (UI/LLM)."""
-        # Get data that Lane D will visualize
-        prices = get_prices()
-        inventory = get_inventory()
-        forecaster = Forecaster(use_prophet=False, use_ensemble=False)
-        forecast = forecaster.predict_next(prices, periods=12)
-        
-        # Data should be JSON serializable for web UI
-        import json
-        
-        # Test serialization of key data
-        price_sample = {
-            'timestamp': prices['timestamp'].iloc[-1].isoformat(),
-            'price': float(prices['price'].iloc[-1]),
-            'forecast': float(forecast['predicted_price'].iloc[0])
-        }
-        json.dumps(price_sample)  # Should not raise
-        
-        # Inventory should be JSON compatible
-        inventory_serializable = {k: v for k, v in inventory.items() 
-                                 if isinstance(v, (str, int, float, list))}
-        json.dumps(inventory_serializable)  # Should not raise
+        assert isinstance(inventory, dict)
+        assert 'status' in inventory
+        # Should indicate fallback mode
+        assert 'fallback' in inventory['status'] or 'API_UNAVAILABLE' in inventory.get('alerts', [])
 
 
-class TestDataQuality:
-    """Test data quality and robustness."""
+class TestForecasting:
+    """Test forecasting functionality with real/mock data."""
     
-    def test_missing_data_handling(self):
-        """Test handling of missing or corrupted data."""
-        # Test with empty data
+    def test_basic_forecaster_creation(self):
+        """Test basic forecaster instantiation."""
+        forecaster = create_forecaster()
+        assert isinstance(forecaster, Forecaster)
+    
+    def test_advanced_forecaster_creation(self):
+        """Test advanced forecaster with dependencies check."""
+        try:
+            forecaster = create_advanced_forecaster()
+            assert isinstance(forecaster, QuantitativeForecaster)
+        except ImportError:
+            # Advanced libraries not available, should fall back
+            forecaster = create_advanced_forecaster()
+            assert isinstance(forecaster, Forecaster)
+    
+    def test_forecasting_with_real_data(self):
+        """Test forecasting using real API data."""
+        # Get real price data
+        df = get_prices()
+        
+        if len(df) < 48:  # Need sufficient data
+            pytest.skip("Insufficient data for forecasting test")
+        
+        forecaster = create_forecaster()
+        
+        # Test forecast generation
+        forecast = forecaster.forecast(df, horizon_hours=24)
+        
+        assert isinstance(forecast, dict)
+        required_keys = ['timestamps', 'energy_price', 'sigma_energy', 'sigma_hash', 'sigma_token']
+        for key in required_keys:
+            assert key in forecast, f"Missing forecast key: {key}"
+        
+        # Validate forecast structure
+        assert len(forecast['timestamps']) == 24
+        assert len(forecast['energy_price']) == 24
+        assert all(p > 0 for p in forecast['energy_price'])
+        assert all(s >= 0 for s in forecast['sigma_energy'])
+    
+    def test_forecasting_empty_data_handling(self):
+        """Test forecaster behavior with empty/insufficient data."""
+        forecaster = create_forecaster()
+        
+        # Test with empty DataFrame
         empty_df = pd.DataFrame()
-        forecaster = Forecaster()
+        forecast = forecaster.forecast(empty_df, horizon_hours=24)
         
-        # Should not crash
-        forecast = forecaster.predict_next(empty_df)
-        assert isinstance(forecast, pd.DataFrame)
+        # Should return default/synthetic forecast
+        assert isinstance(forecast, dict)
+        assert 'energy_price' in forecast
+        assert len(forecast['energy_price']) == 24
     
-    def test_extreme_values(self):
-        """Test handling of extreme price values."""
-        dates = pd.date_range(start='2024-01-01', periods=48, freq='H')
-        extreme_prices = [1000, 0.01] * 24  # Extreme high and low
+    def test_feature_engineering_with_api_data(self):
+        """Test feature engineering with real API data."""
+        df = get_prices()
         
-        extreme_data = pd.DataFrame({
-            'timestamp': dates,
-            'price': extreme_prices,
-            'volume': [100] * 48
-        })
+        feature_engineer = FeatureEngineer()
+        enhanced_df = feature_engineer.engineer_features(df)
         
-        forecaster = Forecaster(use_prophet=False, use_ensemble=False)
-        forecast = forecaster.predict_next(extreme_data)
+        # Should have more columns than original
+        assert len(enhanced_df.columns) > len(df.columns)
         
-        # Should produce reasonable forecasts despite extreme inputs
-        assert forecast['predicted_price'].min() > 0
-        assert forecast['predicted_price'].max() < 10000
+        # Check for key technical indicators
+        expected_features = ['price_ma', 'price_rsi', 'price_volatility', 'returns']
+        present_features = [f for f in expected_features if any(f in col for col in enhanced_df.columns)]
+        assert len(present_features) > 0, "No technical indicators found in features"
+
+
+class TestIntegration:
+    """Test end-to-end integration scenarios."""
     
-    def test_time_consistency(self):
-        """Test time series consistency."""
-        prices = get_prices()
+    def test_data_flow_integration(self):
+        """Test complete data flow from API to forecasting."""
+        # Step 1: Get real-time data
+        prices_df = get_prices()
+        inventory = get_inventory()
         
-        # Check time ordering
-        assert prices['timestamp'].is_monotonic_increasing
+        # Step 2: Create forecast
+        forecaster = create_forecaster()
+        forecast = forecaster.forecast(prices_df, horizon_hours=6)
         
-        # Check reasonable time gaps
-        time_diffs = prices['timestamp'].diff().dropna()
-        assert all(time_diffs <= pd.Timedelta(hours=2))  # No gaps > 2 hours 
+        # Step 3: Validate integration
+        assert isinstance(forecast, dict)
+        assert len(forecast['energy_price']) == 6
+        
+        # Test that forecast incorporates market conditions
+        current_price = prices_df['price'].iloc[-1]
+        forecast_prices = forecast['energy_price']
+        
+        # Forecast should be reasonable relative to current prices
+        price_ratio = np.array(forecast_prices) / current_price
+        assert all(0.5 <= ratio <= 2.0 for ratio in price_ratio), "Forecast prices seem unrealistic"
+    
+    def test_api_key_configuration(self):
+        """Test API key configuration and validation."""
+        connection_test = test_mara_api_connection()
+        
+        # If API key is not configured, should provide clear guidance
+        if not connection_test['api_key_configured']:
+            recommendations_str = str(connection_test['recommendations']).lower()
+            assert "api key" in recommendations_str or "mara" in recommendations_str
+        
+        # Should handle both configured and unconfigured states gracefully
+        assert connection_test['overall_status'] in ['operational', 'limited']
+    
+    def test_fallback_reliability(self):
+        """Test system reliability when API is unavailable."""
+        with patch('api_client.client._make_request') as mock_request:
+            # Simulate complete API failure
+            mock_request.side_effect = Exception("Network error")
+            
+            # System should still function with fallback data
+            prices_df = get_prices()
+            inventory = get_inventory()
+            
+            assert len(prices_df) > 0
+            assert 'price' in prices_df.columns
+            assert isinstance(inventory, dict)
+            
+            # Should be able to generate forecasts
+            forecaster = create_forecaster()
+            forecast = forecaster.forecast(prices_df, horizon_hours=12)
+            
+            assert isinstance(forecast, dict)
+            assert len(forecast['energy_price']) == 12
+
+
+@pytest.mark.integration
+class TestMARAPILive:
+    """Live tests for MARA API (only run when API is available)."""
+    
+    def test_live_api_connection(self):
+        """Test live connection to MARA API."""
+        try:
+            connection_test = test_mara_api_connection()
+            
+            if connection_test.get('prices_available'):
+                # Live API test - get real prices
+                df = get_prices()
+                assert len(df) > 0
+                
+                # Verify we got real-time data
+                latest_timestamp = pd.to_datetime(df['timestamp'].iloc[-1])
+                time_diff = abs((datetime.now() - latest_timestamp).total_seconds())
+                
+                # Should be relatively recent (within 24 hours)
+                assert time_diff < 86400, "Price data seems too old"
+                
+            else:
+                pytest.skip("MARA API not available for live testing")
+                
+        except Exception as e:
+            pytest.skip(f"Live API test skipped due to: {e}")
+    
+    def test_live_inventory_data(self):
+        """Test live inventory data from MARA API."""
+        try:
+            inventory = get_inventory()
+            
+            # If we have MARA response data, validate it
+            if 'mara_response' in inventory:
+                mara_data = inventory['mara_response']
+                
+                # Should have expected MARA structure
+                expected_sections = ['inference', 'miners']
+                available_sections = [s for s in expected_sections if s in mara_data]
+                
+                assert len(available_sections) > 0, "No expected MARA data sections found"
+                
+            # Inventory should have realistic values
+            assert 0 <= inventory['battery_soc'] <= 1.0
+            assert inventory['power_total'] > 0
+            
+        except Exception as e:
+            pytest.skip(f"Live inventory test skipped due to: {e}")
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"]) 

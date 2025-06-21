@@ -471,6 +471,29 @@ class Forecaster:
             Dictionary with performance metrics
         """
         return self.model_metrics.copy()
+    
+    def forecast(self, prices: pd.DataFrame, horizon_hours: int = 24) -> Dict:
+        """Generate forecast in dictionary format for test compatibility.
+        
+        Args:
+            prices: Historical price data
+            horizon_hours: Number of hours to forecast
+            
+        Returns:
+            Dictionary with forecast data
+        """
+        forecast_df = self.predict_next(prices, periods=horizon_hours)
+        
+        # Ensure non-negative prices
+        energy_prices = np.maximum(forecast_df['predicted_price'].values, 0.01)
+        
+        return {
+            'timestamps': forecast_df['timestamp'].tolist(),
+            'energy_price': energy_prices.tolist(),
+            'sigma_energy': forecast_df['σ_energy'].tolist(),
+            'sigma_hash': forecast_df['σ_hash'].tolist(),
+            'sigma_token': forecast_df['σ_token'].tolist()
+        }
 
 
 def create_advanced_forecaster(**kwargs) -> 'Forecaster':
@@ -490,4 +513,9 @@ def create_advanced_forecaster(**kwargs) -> 'Forecaster':
 # Backwards compatibility - use advanced forecaster by default if available
 def get_forecaster(**kwargs) -> 'Forecaster':
     """Get the best available forecaster."""
+    return create_advanced_forecaster(**kwargs)
+
+
+def create_forecaster(**kwargs) -> 'Forecaster':
+    """Alias for create_advanced_forecaster for test compatibility."""
     return create_advanced_forecaster(**kwargs) 

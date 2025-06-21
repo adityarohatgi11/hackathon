@@ -1,8 +1,44 @@
 # config.toml (template—DO NOT commit your real API key)
-api_key = "YOUR_API_KEY_HERE"
-site_power_kw = 0
+
+# GridPilot-GT Configuration
+
+# MARA Hackathon API Configuration
+[api]
+api_key = "YOUR_API_KEY_HERE"  # Replace with your actual MARA API key
+base_url = "https://mara-hackathon-api.onrender.com"
+site_name = "HackFestSite"  # Your site name for registration
+site_power_kw = 1000000  # Site power capacity in watts (1MW default)
+
+# System Specifications
+[system]
 BATTERY_CAP_MWH = 1.0
 BATTERY_MAX_KW = 250.0
+MAX_POWER_KW = 1000.0
+
+# Forecasting Configuration  
+[forecasting]
+MODEL_TYPE = "advanced"
+RETRAIN_HOURS = 24
+UNCERTAINTY_BANDS = [0.1, 0.25, 0.5, 0.75, 0.9]
+
+# Game Theory Parameters
+[game_theory]
+RISK_AVERSION = 0.5
+MAX_BID_PRICE = 100.0
+MIN_BID_PRICE = 1.0
+
+# Control System Parameters
+[control]
+MPC_HORIZON_HOURS = 4
+COOLING_EFFICIENCY = 0.85
+THERMAL_TIME_CONSTANT = 2.5
+
+# UI Configuration
+[ui]
+REFRESH_RATE_SEC = 30
+SHOW_ADVANCED_METRICS = true
+
+# Additional parameters
 SOC_MIN = 0.15
 SOC_MAX = 0.90
 BATTERY_EFF = 0.94
