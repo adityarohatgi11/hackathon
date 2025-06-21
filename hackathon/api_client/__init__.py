@@ -1,5 +1,5 @@
-"""API Client module for GridPilot-GT energy trading system."""
+"""API Client for GridPilot-GT energy market integration."""
 
-from .client import register_site, get_prices, get_inventory, submit_bid
+from .client import get_prices, get_inventory, submit_bid, register_site, get_market_status
 
-__all__ = ['register_site', 'get_prices', 'get_inventory', 'submit_bid'] 
+__all__ = ['get_prices', 'get_inventory', 'submit_bid', 'register_site', 'get_market_status'] 

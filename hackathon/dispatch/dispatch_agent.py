@@ -41,7 +41,7 @@ def build_payload(allocation: Dict[str, float], inventory: Dict[str, Any],
         'constraints_satisfied': within_limits and battery_ok,
         'system_state': {
             'soc': soc,
-            'utilization': total_power / power_limit,
+            'utilization': total_power / max(power_limit, 1e-6),  # Avoid division by zero
             'efficiency': inventory.get('gpu_utilization', 0.8)
         },
         'market_data': {
