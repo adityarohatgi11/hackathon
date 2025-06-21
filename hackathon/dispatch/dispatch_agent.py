@@ -209,6 +209,7 @@ def build_payload(allocation: Dict[str, float], inventory: Dict[str, Any],
     # Fast path: pre-compute critical values
     gpu_power = sum(allocation.values())  # Already in kW
     total_power = gpu_power + cooling_kw
+    scale_factor = 1.0  # Initialize scale factor
     
     # Initialize high-performance agent for constraint validation
     if not hasattr(build_payload, '_agent'):
@@ -230,15 +231,19 @@ def build_payload(allocation: Dict[str, float], inventory: Dict[str, Any],
     constraints_satisfied, violations = agent.validate_constraints_fast(system_state, total_power)
     
     # Emergency power scaling if needed
-    scale_factor = 1.0
     if total_power > power_limit:
-        # Scale GPU power so that (GPU * s) + cooling <= power_limit
-        # Ensure we do not exceed the limit even with rounding errors
-        safe_gpu_capacity = max(power_limit - cooling_kw, 0)
-        scale_factor = safe_gpu_capacity / max(gpu_power, 1e-6)
-        gpu_power *= scale_factor
+        # If cooling alone exceeds the limit we proportionally curtail both GPU and cooling.
+        scale_all = power_limit / total_power if total_power > 0 else 0.0
+        gpu_power *= scale_all
+        cooling_kw *= scale_all
         total_power = gpu_power + cooling_kw
-        constraints_satisfied = True  # Now within limits
+        scale_factor = scale_all
+
+    # Re-evaluate constraints after potential scaling
+    constraints_satisfied, violations = agent.validate_constraints_fast(system_state, total_power)
+    if not constraints_satisfied:
+        # Mark that emergency scaling was applied but still violated
+        scale_factor = min(scale_factor, 1.0)
     
     # Calculate battery operations
     battery_charge_kw = max(0, power_limit - total_power) if soc < 0.8 else 0

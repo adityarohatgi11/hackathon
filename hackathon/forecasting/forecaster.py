@@ -390,14 +390,24 @@ class Forecaster:
             combined_upper = np.zeros(periods)
             
             if 'prophet' in valid_forecasts and 'predicted_price' in valid_forecasts['prophet'].columns:
-                combined_pred += prophet_weight * valid_forecasts['prophet']['predicted_price'].values
-                combined_lower += prophet_weight * valid_forecasts['prophet']['lower_bound'].values
-                combined_upper += prophet_weight * valid_forecasts['prophet']['upper_bound'].values
-            
+                # Ensure proper dtype conversion for numpy operations
+                prophet_pred = np.asarray(valid_forecasts['prophet']['predicted_price'].values, dtype=np.float64)
+                prophet_lower = np.asarray(valid_forecasts['prophet']['lower_bound'].values, dtype=np.float64)
+                prophet_upper = np.asarray(valid_forecasts['prophet']['upper_bound'].values, dtype=np.float64)
+                
+                combined_pred += prophet_weight * prophet_pred
+                combined_lower += prophet_weight * prophet_lower
+                combined_upper += prophet_weight * prophet_upper
+
             if 'ensemble' in valid_forecasts and 'predicted_price' in valid_forecasts['ensemble'].columns:
-                combined_pred += ensemble_weight * valid_forecasts['ensemble']['predicted_price'].values
-                combined_lower += ensemble_weight * valid_forecasts['ensemble']['lower_bound'].values
-                combined_upper += ensemble_weight * valid_forecasts['ensemble']['upper_bound'].values
+                # Ensure proper dtype conversion for numpy operations
+                ensemble_pred = np.asarray(valid_forecasts['ensemble']['predicted_price'].values, dtype=np.float64)
+                ensemble_lower = np.asarray(valid_forecasts['ensemble']['lower_bound'].values, dtype=np.float64)
+                ensemble_upper = np.asarray(valid_forecasts['ensemble']['upper_bound'].values, dtype=np.float64)
+                
+                combined_pred += ensemble_weight * ensemble_pred
+                combined_lower += ensemble_weight * ensemble_lower
+                combined_upper += ensemble_weight * ensemble_upper
             
             forecast_df = pd.DataFrame({
                 'timestamp': valid_forecasts[list(valid_forecasts.keys())[0]]['timestamp'],

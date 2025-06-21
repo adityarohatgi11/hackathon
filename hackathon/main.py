@@ -8,6 +8,7 @@ import sys
 import argparse
 from datetime import datetime
 import pandas as pd
+import time
 
 # Import all modules
 from api_client import get_prices, get_inventory, submit_bid
@@ -24,6 +25,7 @@ def main(simulate: bool = False):
     Args:
         simulate: If True, run in simulation mode with mock data
     """
+    start_time = time.time()
     print("🚀 GridPilot-GT Starting...")
     print(f"Simulation mode: {simulate}")
     print(f"Timestamp: {datetime.now()}")
@@ -38,8 +40,11 @@ def main(simulate: bool = False):
         
         # Step 2: Generate forecasts
         print("\n🔮 Generating forecasts...")
-        forecaster = Forecaster()
-        forecast = forecaster.predict_next(prices)
+        forecaster = Forecaster(use_prophet=not simulate, use_ensemble=not simulate)
+        if simulate:
+            forecast = forecaster._predict_simple(prices, periods=24)  # type: ignore  # pylint: disable=protected-access
+        else:
+            forecast = forecaster.predict_next(prices)
         print(f"Generated {len(forecast)} hour forecast")
         
         # Step 3: Optimize bids
@@ -101,13 +106,24 @@ def main(simulate: bool = False):
         print(f"  • Cooling Load: {cooling_kw:.1f} kW")
         print(f"  • Efficiency: {cooling_metrics['efficiency']:.1%}")
         
-        return payload
+        # Return success result for testing
+        return {
+            'success': True,
+            'elapsed_time': time.time() - start_time,
+            'soc': soc,
+            'total_power': payload['power_requirements']['total_power_kw'],
+            'revenue': payments,
+            'payload': payload
+        }
         
     except Exception as e:
-        print(f"\n❌ Error in GridPilot-GT: {e}")
-        if not simulate:
-            raise
-        return None
+        print(f"❌ Error in GridPilot-GT: {e}")
+        print(f"💡 Run with simulate=True for testing")
+        return {
+            'success': False,
+            'error': str(e),
+            'elapsed_time': time.time() - start_time
+        }
 
 
 if __name__ == "__main__":
@@ -120,7 +136,7 @@ if __name__ == "__main__":
     
     result = main(simulate=simulate_mode)
     
-    if result:
+    if result['success']:
         print("\n🎉 GridPilot-GT executed successfully!")
         sys.exit(0)
     else:
