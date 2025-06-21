@@ -318,7 +318,14 @@ class Forecaster:
             last_time = pd.Timestamp.now()
             last_price = 50.0
         else:
-            last_time = prices['timestamp'].iloc[-1]
+            last_timestamp = prices['timestamp'].iloc[-1]
+            # Convert timestamp if it's a nanosecond integer
+            if isinstance(last_timestamp, (int, np.integer)):
+                last_time = pd.to_datetime(last_timestamp, unit='ns')
+            elif not isinstance(last_timestamp, pd.Timestamp):
+                last_time = pd.to_datetime(last_timestamp)
+            else:
+                last_time = last_timestamp
             last_price = prices['price'].iloc[-1]
         
         # Generate future timestamps early for reuse
@@ -348,16 +355,22 @@ class Forecaster:
         # CRITICAL: Cap uncertainty to reasonable bounds (max $50/MWh)
         uncertainty = np.minimum(uncertainty, 50.0)
         
-        return pd.DataFrame({
+        # Create forecast DataFrame
+        forecast_df = pd.DataFrame({
             'timestamp': future_times,
-            'predicted_price': predictions,
-            'lower_bound': predictions - uncertainty,
-            'upper_bound': predictions + uncertainty,
-            'σ_energy': uncertainty,
-            'σ_hash': uncertainty * 0.5,
-            'σ_token': uncertainty * 0.3,
+            'predicted_price': predictions.astype(np.float64),
+            'lower_bound': (predictions - uncertainty).astype(np.float64),
+            'upper_bound': (predictions + uncertainty).astype(np.float64),
             'method': 'simple'
         })
+        
+        # Add uncertainty columns for compatibility
+        forecast_df['σ_energy'] = uncertainty.astype(np.float64)
+        forecast_df['σ_hash'] = (uncertainty * 0.5).astype(np.float64)
+        forecast_df['σ_token'] = (uncertainty * 0.3).astype(np.float64)
+        
+        logger.info(f"Generated forecast using simple method")
+        return forecast_df
     
     def _combine_forecasts(self, forecasts: Dict[str, pd.DataFrame], 
                           prices: pd.DataFrame, periods: int) -> pd.DataFrame:
@@ -365,9 +378,12 @@ class Forecaster:
         # CRITICAL: Handle empty forecasts
         if not forecasts:
             return self._predict_simple(prices, periods)
-            
+        
         if len(forecasts) == 1:
             forecast_df = list(forecasts.values())[0]
+            # Check if single forecast is empty or missing required columns
+            if len(forecast_df) == 0 or 'predicted_price' not in forecast_df.columns:
+                return self._predict_simple(prices, periods)
         else:
             # Weighted ensemble of forecasts
             prophet_weight = 0.6 if 'prophet' in forecasts else 0.0
@@ -417,10 +433,14 @@ class Forecaster:
                 'method': 'combined'
             })
         
-        # CRITICAL: Ensure all predictions are positive and reasonable
-        forecast_df['predicted_price'] = np.maximum(forecast_df['predicted_price'], 0.01)
-        forecast_df['lower_bound'] = np.maximum(forecast_df['lower_bound'], 0.01)
-        forecast_df['upper_bound'] = np.maximum(forecast_df['upper_bound'], forecast_df['lower_bound'])
+        # Ensure proper numeric dtypes and positive values
+        forecast_df['predicted_price'] = pd.to_numeric(forecast_df['predicted_price'], errors='coerce').fillna(0.01)
+        forecast_df['lower_bound'] = pd.to_numeric(forecast_df['lower_bound'], errors='coerce').fillna(0.01)
+        forecast_df['upper_bound'] = pd.to_numeric(forecast_df['upper_bound'], errors='coerce').fillna(0.01)
+        
+        forecast_df['predicted_price'] = np.maximum(forecast_df['predicted_price'], 0.01).astype(np.float64)
+        forecast_df['lower_bound'] = np.maximum(forecast_df['lower_bound'], 0.01).astype(np.float64)
+        forecast_df['upper_bound'] = np.maximum(forecast_df['upper_bound'], forecast_df['lower_bound']).astype(np.float64)
         
         # CRITICAL: Cap extreme predictions (energy prices rarely exceed $500/MWh)
         max_reasonable_price = 500.0
@@ -435,9 +455,9 @@ class Forecaster:
         max_uncertainty = np.minimum(forecast_df['predicted_price'] * 0.2, 50.0)
         uncertainty = np.minimum(uncertainty, max_uncertainty)
         
-        forecast_df['σ_energy'] = uncertainty
-        forecast_df['σ_hash'] = uncertainty * 0.5
-        forecast_df['σ_token'] = uncertainty * 0.3
+        forecast_df['σ_energy'] = uncertainty.astype(np.float64)
+        forecast_df['σ_hash'] = (uncertainty * 0.5).astype(np.float64)
+        forecast_df['σ_token'] = (uncertainty * 0.3).astype(np.float64)
         
         logger.info(f"Generated forecast using {forecast_df['method'].iloc[0]} method")
         return forecast_df

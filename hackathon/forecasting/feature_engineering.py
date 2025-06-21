@@ -59,6 +59,17 @@ class FeatureEngineer:
         """Add time-based features."""
         df = df.copy()
         
+        # Ensure timestamp is datetime - handle both datetime and nanosecond integers
+        if df['timestamp'].dtype == 'object' or df['timestamp'].dtype == 'int64':
+            try:
+                # Try converting nanosecond timestamps to datetime
+                df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ns')
+            except (ValueError, TypeError):
+                # If that fails, try general datetime conversion
+                df['timestamp'] = pd.to_datetime(df['timestamp'])
+        elif not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+        
         # Basic temporal features
         df['hour'] = df['timestamp'].dt.hour
         df['day_of_week'] = df['timestamp'].dt.dayofweek
