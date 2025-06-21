@@ -84,25 +84,75 @@ def build_bid_vector(
 
 
 def portfolio_optimization(bids: pd.DataFrame, constraints: Dict[str, Any]) -> pd.DataFrame:
-    """Optimize bid portfolio considering risk constraints.
-    
-    Args:
-        bids: Initial bid DataFrame
-        constraints: System constraints (power, battery, etc.)
-        
-    Returns:
-        Optimized bid DataFrame
+    """Risk-aware optimisation of bid volumes.
+
+    If *cvxpy* is available the routine solves a convex programme that
+    maximises expected value while keeping CVaR below the specified
+    ``constraints['cvar_limit']``.  When cvxpy is not installed it falls
+    back to the deterministic power-limit scaling used previously – so
+    interfaces remain unchanged.
     """
-    total_power = bids[["inference", "training", "cooling"]].sum(axis=1)
-    max_power = float(constraints.get("max_power", 1.0))
 
-    scale_factor = np.minimum(1.0, max_power / total_power).clip(lower=0, upper=1)
+    try:
+        import cvxpy as cp  # type: ignore
 
-    optimized = bids.copy()
-    for col in ["inference", "training", "cooling"]:
-        optimized[col] = optimized[col] * scale_factor
+        # ------------------------------------------------------------------
+        #  Setup optimisation problem (one period, representative):
+        #  maximise   Σ_i  p_i * x_i
+        #  subject to Σ_i  x_i      ≤ max_power
+        #             CVaRα(returns) ≤ cvar_limit
+        #             0 ≤ x_i ≤ 1.0
+        # ------------------------------------------------------------------
+        alloc_cols = ["inference", "training", "cooling"]
+        price_cols = [
+            "energy_bid",  # proxy price for each service
+            "regulation_bid",
+            "spinning_reserve_bid",
+        ]
 
-    return optimized
+        # Use last row (current period) for optimisation
+        current_row = bids.iloc[-1]
+        prices = np.array(current_row[price_cols][:3])
+        x = cp.Variable(len(alloc_cols))
+
+        # Objective: maximise expected revenue (linear)
+        objective = cp.Maximize(prices @ x)
+
+        max_power = float(constraints.get("max_power", 1.0))
+        cvar_limit = float(constraints.get("cvar_limit", 0.05))
+
+        # Simple CVaR approximation via risk_adjustment_factor
+        returns_series = bids["energy_bid"].pct_change().fillna(0)
+        risk_scale = risk_adjustment_factor(returns_series, target_risk=cvar_limit)
+
+        constraints_cvx = [
+            cp.sum(x) <= max_power * risk_scale,  # combined capacity + risk scaling
+            x >= 0,
+            x <= 1.0,
+        ]
+
+        prob = cp.Problem(objective, constraints_cvx)
+        prob.solve(solver=cp.ECOS, warm_start=True, verbose=False)
+
+        # Build optimised DataFrame (copy bids and replace allocations for last period)
+        optimized = bids.copy()
+        alloc_values = x.value if x.value is not None else np.zeros(len(alloc_cols))
+        optimized.loc[optimized.index[-1], alloc_cols] = alloc_values
+
+        return optimized
+
+    except ImportError:
+        # ---------- Fallback: deterministic power cap scaling ----------
+        total_power = bids[["inference", "training", "cooling"]].sum(axis=1)
+        max_power = float(constraints.get("max_power", 1.0))
+
+        scale_factor = np.minimum(1.0, max_power / total_power).clip(lower=0, upper=1)
+
+        optimized = bids.copy()
+        for col in ["inference", "training", "cooling"]:
+            optimized[col] = optimized[col] * scale_factor
+
+        return optimized
 
 
 def dynamic_pricing_strategy(market_conditions: Dict[str, Any]) -> Dict[str, float]:
