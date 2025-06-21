@@ -27,6 +27,12 @@ from forecasting.stochastic_models import (
     MonteCarloEngine, 
     create_rl_agent
 )
+from forecasting.advanced_qlearning import (
+    create_advanced_qlearning_system,
+    AdvancedDQNAgent,
+    AdvancedStateEncoder,
+    EnergyTradingRewardFunction
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,11 +63,18 @@ class EnhancedGridPilot:
             # Initialize Monte Carlo engine
             self.mc_engine = MonteCarloEngine(n_simulations=5000)
             
-            # Initialize RL agent
+            # Initialize RL agent (both traditional and advanced)
             self.rl_agent = create_rl_agent(
                 state_size=64, 
                 action_size=5, 
                 learning_rate=0.1
+            )
+            
+            # Initialize Advanced Q-Learning System
+            self.advanced_rl_agent, self.state_encoder, self.reward_function = create_advanced_qlearning_system(
+                state_lookback=24,
+                action_size=5,
+                learning_rate=0.001
             )
             
             # Track model performance
@@ -256,8 +269,80 @@ class EnhancedGridPilot:
         
         return results
     
+    def run_advanced_qlearning(self, prices: pd.DataFrame, enhanced_forecast: Dict) -> Dict:
+        """Run advanced Q-learning for adaptive strategy optimization.
+        
+        Args:
+            prices: Historical price data
+            enhanced_forecast: Enhanced forecasting results
+            
+        Returns:
+            Q-learning allocation results
+        """
+        results = {}
+        
+        if not self.use_advanced_methods:
+            return results
+        
+        try:
+            # Extract current market state
+            current_price = prices['price'].iloc[-1] if len(prices) > 0 else 50.0
+            price_volatility = prices['price'].std() / prices['price'].mean() if len(prices) > 1 else 0.1
+            
+            # Create market state for Q-learning
+            market_state = {
+                'price': current_price,
+                'soc': 0.5 + 0.2 * np.sin(len(prices) * 0.1),  # Simulated battery SOC
+                'demand': 0.6 + 0.3 * np.cos(len(prices) * 0.05),  # Simulated demand
+                'volatility': price_volatility,
+                'hour_of_day': (len(prices) % 24),
+                'day_of_week': ((len(prices) // 24) % 7),
+                'power_available': self.total_capacity_kw,
+                'battery_capacity': 100000,
+                'cooling_efficiency': 3.0,
+                'grid_stability': 0.95,
+                'market_trend': (current_price - prices['price'].mean()) / prices['price'].std() if len(prices) > 1 else 0.0,
+                'volatility_regime': 1 if price_volatility > 0.15 else 0,
+                'liquidity_score': 0.8
+            }
+            
+            # Encode state using advanced encoder
+            encoded_state = self.state_encoder.encode_state(market_state)
+            
+            # Get trading strategy from advanced Q-learning agent
+            trading_strategy = self.advanced_rl_agent.get_trading_strategy(encoded_state)
+            
+            # Convert strategy to allocation
+            allocation_pct = trading_strategy['allocation_pct']
+            allocation_kw = allocation_pct * self.total_capacity_kw
+            
+            # Calculate confidence-weighted allocation
+            confidence = trading_strategy['confidence']
+            risk_adjusted_allocation = allocation_kw * confidence
+            
+            results['advanced_rl'] = {
+                'strategy': trading_strategy,
+                'allocation_kw': risk_adjusted_allocation,
+                'allocation_pct': (risk_adjusted_allocation / self.total_capacity_kw) * 100,
+                'confidence': confidence,
+                'action_name': trading_strategy['action_name'],
+                'risk_tolerance': trading_strategy['risk_tolerance'],
+                'aggressiveness': trading_strategy['aggressiveness'],
+                'market_state': market_state,
+                'encoded_state_size': len(encoded_state)
+            }
+            
+            logger.info(f"Advanced Q-Learning: {risk_adjusted_allocation:,.0f} kW allocated ({trading_strategy['action_name']})")
+            logger.info(f"Confidence: {confidence:.3f}, Risk Tolerance: {trading_strategy['risk_tolerance']:.2f}")
+            
+        except Exception as e:
+            logger.warning(f"Advanced Q-learning failed: {e}")
+            results['advanced_rl'] = {'error': str(e), 'allocation_kw': 0}
+        
+        return results
+    
     def optimize_allocation(self, enhanced_forecast: Dict, game_theory_results: Dict, 
-                          inventory: Dict) -> Dict:
+                          inventory: Dict, qlearning_results: Dict = None) -> Dict:
         """Optimize final allocation using all advanced methods.
         
         Args:
@@ -298,6 +383,12 @@ class EnhancedGridPilot:
             allocations['cooperative'] = coop_allocation
             total_theoretical += coop_allocation
         
+        # Q-learning allocation
+        if qlearning_results and 'advanced_rl' in qlearning_results:
+            rl_allocation = qlearning_results['advanced_rl']['allocation_kw']
+            allocations['advanced_rl'] = rl_allocation
+            total_theoretical += rl_allocation
+        
         # Available capacity
         available_capacity = inventory.get('power_available', self.total_capacity_kw)
         
@@ -308,10 +399,11 @@ class EnhancedGridPilot:
             
             # Apply priority weighting
             priority_weights = {
-                'sde_total': 0.4,      # High priority - good forecasting
-                'monte_carlo': 0.2,    # Medium priority - risk management
-                'nash': 0.15,          # Medium priority - strategic
-                'cooperative': 0.25    # Medium-high priority - coalition benefits
+                'sde_total': 0.3,      # High priority - good forecasting
+                'monte_carlo': 0.15,   # Medium priority - risk management
+                'nash': 0.1,           # Medium priority - strategic
+                'cooperative': 0.2,    # Medium-high priority - coalition benefits
+                'advanced_rl': 0.25    # High priority - adaptive learning
             }
             
             final_allocations = {}
@@ -394,10 +486,19 @@ def main_enhanced(simulate: bool = False, use_advanced: bool = True):
         print("\n🎮 Running enhanced game theory...")
         game_theory_results = enhanced_system.run_enhanced_game_theory(prices, enhanced_forecast)
         
-        # Step 4: Optimize allocation
+        # Step 4: Advanced Q-learning
+        print("\n🧠 Running advanced Q-learning...")
+        qlearning_results = enhanced_system.run_advanced_qlearning(prices, enhanced_forecast)
+        
+        if use_advanced and 'advanced_rl' in qlearning_results:
+            rl_info = qlearning_results['advanced_rl']
+            print(f"✅ Q-Learning: {rl_info['allocation_kw']:,.0f} kW allocated ({rl_info['action_name']})")
+            print(f"   Confidence: {rl_info['confidence']:.3f}, Aggressiveness: {rl_info['aggressiveness']:.2f}")
+        
+        # Step 5: Optimize allocation
         print("\n⚡ Optimizing allocation...")
         optimized_allocation = enhanced_system.optimize_allocation(
-            enhanced_forecast, game_theory_results, inventory
+            enhanced_forecast, game_theory_results, inventory, qlearning_results
         )
         
         print(f"Total theoretical: {optimized_allocation['theoretical_total']:,.0f} kW")

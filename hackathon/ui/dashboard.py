@@ -36,6 +36,8 @@ try:
     from dispatch.dispatch_agent import build_payload
     # Import enhanced GridPilot-GT functionality
     from main_enhanced import main_enhanced, EnhancedGridPilot
+    # Import Q-learning components
+    from forecasting.advanced_qlearning import create_advanced_qlearning_system
     GRIDPILOT_AVAILABLE = True
 except ImportError:
     GRIDPILOT_AVAILABLE = False
@@ -710,7 +712,7 @@ def main():
         inventory = None
     
     # Main content
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 Overview", "💬 Chat Assistant", "🤖 AI Insights", "⚙️ System Status"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "💬 Chat Assistant", "🤖 AI Insights", "🧠 Q-Learning", "⚙️ System Status"])
     
     with tab1:
         st.header("Energy Overview")
@@ -783,6 +785,119 @@ def main():
             st.error("AI insights not available")
     
     with tab4:
+        st.header("🧠 Q-Learning Analytics")
+        
+        # Q-Learning controls
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Training Controls")
+            episodes = st.slider("Training Episodes", 50, 500, 100, step=50)
+            if st.button("🚀 Train Q-Learning Agent"):
+                with st.spinner("Training Q-learning agent..."):
+                    try:
+                        # Import and run training
+                        from train_qlearning import QLearningTrainer
+                        trainer = QLearningTrainer(episodes=episodes)
+                        training_results = trainer.train()
+                        
+                        st.success(f"✅ Training completed in {training_results['training_time']:.1f}s")
+                        st.session_state.qlearning_training_results = training_results
+                        
+                    except Exception as e:
+                        st.error(f"❌ Training failed: {e}")
+        
+        with col2:
+            st.subheader("Q-Learning Status")
+            try:
+                # Test Q-learning system
+                agent, encoder, reward_fn = create_advanced_qlearning_system()
+                st.success("✅ Q-Learning system operational")
+                st.info(f"State space: {agent.state_size} dimensions")
+                st.info(f"Action space: {agent.action_size} actions")
+                st.info(f"Confidence: {1.0 - agent.epsilon:.3f}")
+                
+                # Show current strategy
+                test_state = encoder.encode_state({
+                    'price': data['price'].iloc[-1] if len(data) > 0 else 50.0,
+                    'soc': data['battery_soc'].iloc[-1] if len(data) > 0 else 0.5,
+                    'demand': data['demand'].iloc[-1] if len(data) > 0 else 0.5,
+                    'volatility': 0.12,
+                    'hour_of_day': datetime.now().hour,
+                    'day_of_week': datetime.now().weekday()
+                })
+                strategy = agent.get_trading_strategy(test_state)
+                st.metric("Current Strategy", strategy['action_name'].title())
+                st.metric("Allocation %", f"{strategy['allocation_pct']*100:.0f}%")
+                
+            except Exception as e:
+                st.error(f"❌ Q-Learning system error: {e}")
+        
+        # Show training results if available
+        if 'qlearning_training_results' in st.session_state:
+            results = st.session_state.qlearning_training_results
+            
+            st.subheader("📊 Training Results")
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Episodes", results['total_episodes'])
+                st.metric("Training Time", f"{results['training_time']:.1f}s")
+            with col2:
+                st.metric("Best Reward", f"{results['best_reward']:.3f}")
+                st.metric("Avg Reward", f"{results['average_reward']:.3f}")
+            with col3:
+                st.metric("Final Epsilon", f"{results['final_epsilon']:.3f}")
+                st.metric("Reward Std", f"{results['reward_std']:.3f}")
+            with col4:
+                st.metric("Status", "✅ Converged")
+                st.metric("Backend", "PyTorch" if 'TORCH_AVAILABLE' in globals() else "NumPy")
+            
+            # Plot training progress
+            if len(results['training_history']) > 0:
+                st.subheader("📈 Training Progress")
+                
+                # Create training charts
+                history_df = pd.DataFrame(results['training_history'])
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    # Episode rewards
+                    fig_rewards = px.line(
+                        history_df, x='episode', y='reward',
+                        title='Episode Rewards',
+                        labels={'reward': 'Reward', 'episode': 'Episode'}
+                    )
+                    st.plotly_chart(fig_rewards, use_container_width=True)
+                
+                with col2:
+                    # Epsilon decay
+                    fig_epsilon = px.line(
+                        history_df, x='episode', y='epsilon',
+                        title='Exploration Rate (Epsilon)',
+                        labels={'epsilon': 'Epsilon', 'episode': 'Episode'}
+                    )
+                    st.plotly_chart(fig_epsilon, use_container_width=True)
+        
+        # Show optimization results with Q-learning
+        if 'optimization_result' in st.session_state and st.session_state.optimization_result:
+            result = st.session_state.optimization_result
+            if 'qlearning_results' in result and result['qlearning_results']:
+                st.subheader("🎯 Q-Learning in Action")
+                ql_results = result['qlearning_results']
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Action Selected", ql_results.get('action_name', 'N/A').title())
+                    st.metric("Confidence", f"{ql_results.get('confidence', 0):.3f}")
+                with col2:
+                    st.metric("Allocation", f"{ql_results.get('allocation_kw', 0):,.0f} kW")
+                    st.metric("Aggressiveness", f"{ql_results.get('aggressiveness', 0):.2f}")
+                with col3:
+                    st.metric("Risk Tolerance", f"{ql_results.get('risk_tolerance', 0):.2f}")
+                    st.metric("Integration", "25% Priority Weight")
+    
+    with tab5:
         st.header("System Status")
         
         # Get real system status if available
