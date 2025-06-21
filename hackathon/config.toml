@@ -1,6 +1,6 @@
 # config.toml (template—DO NOT commit your real API key)
 
-# GridPilot-GT Configuration
+# GridPilot-GT Configuration with MARA API Integration
 
 # MARA Hackathon API Configuration
 [api]
@@ -8,18 +8,54 @@ api_key = "09e36d82-3f97-4766-adf8-4255d249b1b6"  # Replace with your actual MAR
 base_url = "https://mara-hackathon-api.onrender.com"
 site_name = "JAAM"  # Your site name for registration
 site_power_kw = 1000000  # Site power capacity in watts (1MW default)
+timeout = 30
+retries = 3
 
 # System Specifications
 [system]
+name = "Energy Management Dashboard"
+version = "1.0.0"
+debug = false
 BATTERY_CAP_MWH = 1.0
 BATTERY_MAX_KW = 250.0
 MAX_POWER_KW = 1000.0
+
+# Dashboard Configuration
+[dashboard]
+title = "⚡ Energy Management Dashboard"
+port = 8501
+host = "localhost"
+theme = "light"
+layout = "wide"
+REFRESH_RATE_SEC = 30
+SHOW_ADVANCED_METRICS = true
+
+# Energy Management Parameters
+[energy]
+base_consumption = 100  # kW
+peak_hours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+peak_price = 0.18  # $/kWh
+off_peak_price = 0.10  # $/kWh
+
+# Battery Configuration
+[battery]
+max_capacity = 1000  # kWh
+min_soc = 0.2
+max_soc = 0.95
+charge_rate = 100  # kW
+discharge_rate = 100  # kW
+SOC_MIN = 0.15
+SOC_MAX = 0.90
+BATTERY_EFF = 0.94
+LAMBDA_DEG = 0.0002
 
 # Forecasting Configuration  
 [forecasting]
 MODEL_TYPE = "advanced"
 RETRAIN_HOURS = 24
 UNCERTAINTY_BANDS = [0.1, 0.25, 0.5, 0.75, 0.9]
+horizon_hours = 24
+update_interval = 300  # seconds
 
 # Game Theory Parameters
 [game_theory]
@@ -33,13 +69,8 @@ MPC_HORIZON_HOURS = 4
 COOLING_EFFICIENCY = 0.85
 THERMAL_TIME_CONSTANT = 2.5
 
-# UI Configuration
-[ui]
-REFRESH_RATE_SEC = 30
-SHOW_ADVANCED_METRICS = true
-
-# Additional parameters
-SOC_MIN = 0.15
-SOC_MAX = 0.90
-BATTERY_EFF = 0.94
-LAMBDA_DEG = 0.0002 
+# Logging Configuration
+[logging]
+level = "INFO"
+file = "energy_management.log"
+format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s" 

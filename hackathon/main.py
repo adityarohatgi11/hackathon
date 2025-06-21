@@ -1,25 +1,123 @@
 #!/usr/bin/env python3
 """
-GridPilot-GT: Main Orchestrator
-Energy trading and GPU resource allocation system
+Energy Management System - Main Application
+Entry point for the energy management dashboard and system components.
+Combines MARA API GridPilot-GT functionality with LLM integration.
 """
 
-import sys
 import argparse
 from datetime import datetime
 import pandas as pd
 import time
+import sys
+import os
+import logging
+from pathlib import Path
 
-# Import all modules
-from api_client import get_prices, get_inventory, submit_bid
-from forecasting import Forecaster
-from game_theory.bid_generators import build_bid_vector
-from game_theory.vcg_auction import vcg_allocate
-from control.cooling_model import cooling_for_gpu_kW
-from dispatch.dispatch_agent import build_payload
+# Add the current directory to the path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    import toml
+    from ui.dashboard import main as run_dashboard
+    from llm_integration.mock_interface import MockLLMInterface
+    from llm_integration.unified_interface import UnifiedLLMInterface
+    
+    # GridPilot-GT imports (optional - only if modules exist)
+    try:
+        from api_client.client import get_prices, get_inventory, submit_bid
+        from forecasting.forecaster import Forecaster
+        from game_theory.bid_generators import build_bid_vector
+        from game_theory.vcg_auction import vcg_allocate
+        from control.cooling_model import cooling_for_gpu_kW
+        from dispatch.dispatch_agent import build_payload
+        GRIDPILOT_AVAILABLE = True
+    except ImportError:
+        GRIDPILOT_AVAILABLE = False
+        print("⚠️ GridPilot-GT modules not available - gridpilot mode will not work")
+        
+    LLM_AVAILABLE = True
+except ImportError as e:
+    print(f"Error importing modules: {e}")
+    print("Please ensure all dependencies are installed:")
+    print("pip install streamlit pandas plotly toml anthropic")
+    sys.exit(1)
 
 
-def main(simulate: bool = False):
+def load_config(config_path: str = "config.toml") -> dict:
+    """Load configuration from TOML file."""
+    try:
+        with open(config_path, 'r') as f:
+            return toml.load(f)
+    except FileNotFoundError:
+        print(f"Configuration file {config_path} not found. Using defaults.")
+        return {}
+    except Exception as e:
+        print(f"Error loading configuration: {e}")
+        return {}
+
+
+def setup_logging(config: dict):
+    """Setup logging configuration."""
+    log_config = config.get('logging', {})
+    level = getattr(logging, log_config.get('level', 'INFO'))
+    
+    logging.basicConfig(
+        level=level,
+        format=log_config.get('format', '%(asctime)s - %(name)s - %(levelname)s - %(message)s'),
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(log_config.get('file', 'energy_management.log'))
+        ]
+    )
+
+
+def test_llm_interface():
+    """Test the LLM interface functionality."""
+    print("Testing LLM Interface...")
+    
+    # Use unified interface that automatically selects the best provider
+    try:
+        interface = UnifiedLLMInterface()
+        if interface.is_available():
+            provider_info = interface.get_provider_info()
+            print(f"✅ Using {provider_info['provider']} LLM provider")
+            return interface
+        else:
+            print("⚠️ No LLM providers available")
+    except Exception as e:
+        print(f"⚠️ Error with unified LLM interface: {e}")
+    
+    # Fall back to mock interface
+    interface = MockLLMInterface()
+    print("✅ Mock LLM interface loaded")
+    return interface
+
+
+def run_tests():
+    """Run system tests."""
+    print("Running system tests...")
+    
+    # Test LLM interface
+    interface = test_llm_interface()
+    
+    # Test sample queries
+    test_queries = [
+        "What are the benefits of demand response?",
+        "Explain the battery management strategy",
+        "How can I optimize energy costs?"
+    ]
+    
+    print("\nTesting sample queries:")
+    for query in test_queries:
+        print(f"\nQuery: {query}")
+        response = interface.process_query(query)
+        print(f"Response: {response[:100]}...")
+    
+    print("\n✅ All tests completed successfully!")
+
+
+def run_gridpilot_gt(simulate: bool = False):
     """Main orchestration loop for GridPilot-GT.
     
     Args:
@@ -134,19 +232,98 @@ def main(simulate: bool = False):
         }
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="GridPilot-GT Energy Trading System")
-    parser.add_argument("--simulate", type=int, default=1, 
-                       help="Run in simulation mode (1) or live mode (0)")
+def main():
+    """Main application entry point."""
+    parser = argparse.ArgumentParser(description="Energy Management System with GridPilot-GT")
+    parser.add_argument(
+        "--mode", 
+        choices=["dashboard", "test", "llm", "gridpilot"], 
+        default="dashboard",
+        help="Run mode: dashboard (default), test, llm, or gridpilot"
+    )
+    parser.add_argument(
+        "--config", 
+        default="config.toml",
+        help="Configuration file path"
+    )
+    parser.add_argument(
+        "--port", 
+        type=int,
+        help="Dashboard port (overrides config)"
+    )
+    parser.add_argument(
+        "--simulate", 
+        type=int, 
+        default=1,
+        help="GridPilot-GT simulation mode (1) or live mode (0)"
+    )
     
     args = parser.parse_args()
-    simulate_mode = bool(args.simulate)
     
-    result = main(simulate=simulate_mode)
+    # Load configuration
+    config = load_config(args.config)
     
-    if result['success']:
-        print("\n🎉 GridPilot-GT executed successfully!")
-        sys.exit(0)
-    else:
-        print("\n💥 GridPilot-GT failed!")
-        sys.exit(1) 
+    # Setup logging
+    setup_logging(config)
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Starting Energy Management System in {args.mode} mode")
+    
+    if args.mode == "test":
+        run_tests()
+    
+    elif args.mode == "llm":
+        # Interactive LLM mode
+        interface = test_llm_interface()
+        print("\n🤖 Energy Management Assistant")
+        print("Type 'quit' to exit")
+        print("-" * 50)
+        
+        while True:
+            try:
+                query = input("\nYou: ").strip()
+                if query.lower() in ['quit', 'exit', 'q']:
+                    break
+                
+                if query:
+                    response = interface.process_query(query)
+                    print(f"\nAssistant: {response}")
+            except KeyboardInterrupt:
+                print("\nGoodbye!")
+                break
+            except Exception as e:
+                print(f"Error: {e}")
+    
+    elif args.mode == "gridpilot":
+        # Run GridPilot-GT energy trading system
+        if not GRIDPILOT_AVAILABLE:
+            print("❌ GridPilot-GT modules not available")
+            print("Please ensure all GridPilot-GT dependencies are installed")
+            sys.exit(1)
+            
+        simulate_mode = bool(args.simulate)
+        result = run_gridpilot_gt(simulate=simulate_mode)
+        
+        if result['success']:
+            print("\n🎉 GridPilot-GT executed successfully!")
+            sys.exit(0)
+        else:
+            print("\n💥 GridPilot-GT failed!")
+            sys.exit(1)
+    
+    elif args.mode == "dashboard":
+        # Run the Streamlit dashboard
+        print("Starting Energy Management Dashboard...")
+        print("The dashboard will open in your browser.")
+        print("Press Ctrl+C to stop the server.")
+        
+        # Override port if specified
+        if args.port:
+            config['dashboard']['port'] = args.port
+        
+        # Run dashboard
+        run_dashboard()
+
+
+if __name__ == "__main__":
+    main()

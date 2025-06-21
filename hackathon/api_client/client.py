@@ -1,7 +1,7 @@
 """API Client for GridPilot-GT energy market integration."""
 
 import pandas as pd
-#import toml
+import toml
 import logging
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta

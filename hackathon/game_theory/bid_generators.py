@@ -81,6 +81,10 @@ def build_bid_vector(
             "inference": energy_kw * 0.4,  # kW for inference workloads
             "training": energy_kw * 0.3,   # kW for training workloads
             "cooling": energy_kw * 0.3,    # kW for cooling systems
+            # Add bid prices for each service (required by VCG auction)
+            "inference_bid": adjusted_prices * 1.1,  # Slightly higher bid for inference
+            "training_bid": adjusted_prices * 1.0,   # Standard bid for training
+            "cooling_bid": adjusted_prices * 0.9,    # Lower bid for cooling
         }
     )
 
