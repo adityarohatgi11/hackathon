@@ -553,7 +553,9 @@ class TestErrorHandlingAndEdgeCases:
         forecast = forecaster.predict_next(problematic_df, periods=12)
         
         assert len(forecast) == 12
-        assert all(~np.isnan(forecast['predicted_price']))
+        # Check for NaN values in a robust way that handles object dtype
+        predicted_prices = pd.to_numeric(forecast['predicted_price'], errors='coerce')
+        assert not predicted_prices.isna().any(), "Forecast should not contain NaN values"
         assert all(forecast['predicted_price'] > 0)
         
     def test_extreme_value_handling(self):

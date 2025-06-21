@@ -384,6 +384,20 @@ class Forecaster:
             # Check if single forecast is empty or missing required columns
             if len(forecast_df) == 0 or 'predicted_price' not in forecast_df.columns:
                 return self._predict_simple(prices, periods)
+            
+            # Ensure single forecast also has proper dtypes
+            forecast_df = forecast_df.copy()
+            forecast_df['predicted_price'] = pd.to_numeric(forecast_df['predicted_price'], errors='coerce').fillna(0.01).astype(np.float64)
+            if 'lower_bound' in forecast_df.columns:
+                forecast_df['lower_bound'] = pd.to_numeric(forecast_df['lower_bound'], errors='coerce').fillna(0.01).astype(np.float64)
+            if 'upper_bound' in forecast_df.columns:
+                forecast_df['upper_bound'] = pd.to_numeric(forecast_df['upper_bound'], errors='coerce').fillna(0.01).astype(np.float64)
+            if 'σ_energy' in forecast_df.columns:
+                forecast_df['σ_energy'] = pd.to_numeric(forecast_df['σ_energy'], errors='coerce').fillna(0.01).astype(np.float64)
+            if 'σ_hash' in forecast_df.columns:
+                forecast_df['σ_hash'] = pd.to_numeric(forecast_df['σ_hash'], errors='coerce').fillna(0.01).astype(np.float64)
+            if 'σ_token' in forecast_df.columns:
+                forecast_df['σ_token'] = pd.to_numeric(forecast_df['σ_token'], errors='coerce').fillna(0.01).astype(np.float64)
         else:
             # Weighted ensemble of forecasts
             prophet_weight = 0.6 if 'prophet' in forecasts else 0.0

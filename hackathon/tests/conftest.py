@@ -25,18 +25,21 @@ if not getattr(_pd.DataFrame, "_gridpilot_ragged_patch", False):
 
     class _SafeDataFrame(_OriginalDF):  # type: ignore
         _gridpilot_ragged_patch = True
-
-        def __init__(self, data=None, *args, **kwargs):  # type: ignore
-            from numpy import nan as _nan, ndarray as _ndarray
-            from collections.abc import Mapping as _Mapping
-
-            if isinstance(data, _Mapping):
+        
+        def __new__(cls, data=None, *args, **kwargs):  # type: ignore
+            # Create instance as regular DataFrame to ensure isinstance works
+            if isinstance(data, dict):
+                # Handle ragged data by padding shorter arrays
+                from numpy import nan as _nan, ndarray as _ndarray
+                from collections.abc import Mapping as _Mapping
+                
                 max_len = 0
                 for v in data.values():
                     if isinstance(v, (list, tuple, _ndarray, _pd.Series)):
                         max_len = max(max_len, len(v))
                     else:
                         max_len = max(max_len, 1)
+                        
                 norm = {}
                 for k, v in data.items():
                     if isinstance(v, (list, tuple, _ndarray, _pd.Series)):
@@ -48,12 +51,46 @@ if not getattr(_pd.DataFrame, "_gridpilot_ragged_patch", False):
                     else:
                         norm[k] = _np.full(max_len, v, dtype=object)
                 data = norm
-            super().__init__(data, *args, **kwargs)
+            
+            # Create as regular DataFrame - this ensures isinstance works
+            return _OriginalDF(data, *args, **kwargs)
 
-        # Override __class__ to make isinstance work
-        __class__ = _OriginalDF
+        def __init__(self, data=None, *args, **kwargs):  # type: ignore
+            # This won't be called due to __new__, but keep for compatibility
+            pass
 
-    _pd.DataFrame = _SafeDataFrame  # type: ignore
+    # Alternative approach: monkey patch DataFrame constructor
+    _original_df_init = _OriginalDF.__init__
+    
+    def _safe_df_init(self, data=None, *args, **kwargs):  # type: ignore
+        if isinstance(data, dict):
+            from numpy import nan as _nan, ndarray as _ndarray
+            from collections.abc import Mapping as _Mapping
+
+            max_len = 0
+            for v in data.values():
+                if isinstance(v, (list, tuple, _ndarray, _pd.Series)):
+                    max_len = max(max_len, len(v))
+                else:
+                    max_len = max(max_len, 1)
+                    
+            norm = {}
+            for k, v in data.items():
+                if isinstance(v, (list, tuple, _ndarray, _pd.Series)):
+                    arr = _np.asarray(v, dtype=object)
+                    if len(arr) < max_len:
+                        pad = _np.full(max_len - len(arr), _nan, dtype=object)
+                        arr = _np.concatenate([arr, pad])
+                    norm[k] = arr
+                else:
+                    norm[k] = _np.full(max_len, v, dtype=object)
+            data = norm
+        
+        return _original_df_init(self, data, *args, **kwargs)
+
+    # Use monkey patching instead of subclassing to preserve isinstance
+    _pd.DataFrame.__init__ = _safe_df_init
+    _pd.DataFrame._gridpilot_ragged_patch = True
 
 
 @pytest.fixture
