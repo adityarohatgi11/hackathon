@@ -1,1 +1,1 @@
-# hackathon
+# GridPilot-GT Hackathon
