@@ -47,6 +47,38 @@ try:
 except ImportError:
     QLEARNING_AVAILABLE = False
 
+# Import advanced quantitative and stochastic methods (optional)
+try:
+    from forecasting.stochastic_models import (
+        StochasticDifferentialEquation, 
+        MonteCarloEngine, 
+        create_stochastic_forecaster,
+        create_monte_carlo_engine,
+        create_rl_agent
+    )
+    from forecasting.advanced_forecaster import QuantitativeForecaster
+    from forecasting.advanced_models import (
+        GARCHVolatilityModel, 
+        KalmanStateEstimator, 
+        XGBoostForecaster,
+        GaussianProcessForecaster
+    )
+    STOCHASTIC_AVAILABLE = True
+except ImportError:
+    STOCHASTIC_AVAILABLE = False
+
+# Import advanced game theory components (optional)
+try:
+    from game_theory.advanced_game_theory import (
+        AdvancedAuctionMechanism,
+        create_advanced_auction
+    )
+    from game_theory.mpc_controller import MPCController
+    from game_theory.risk_models import historical_var, historical_cvar, risk_adjustment_factor
+    ADVANCED_GAME_THEORY_AVAILABLE = True
+except ImportError:
+    ADVANCED_GAME_THEORY_AVAILABLE = False
+
 # Configure page
 st.set_page_config(
     page_title="Energy Management Dashboard",
@@ -448,9 +480,6 @@ def display_metrics(data):
         )
 
 
-
-
-
 def insights_panel(llm_interface, data):
     """Display AI-generated insights with auto-generation and caching."""
     st.subheader("🤖 AI Insights")
@@ -708,7 +737,15 @@ def main():
                     st.session_state.messages.append({"role": "assistant", "content": error_msg})
     
     # Main content
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "💬 Chat History", "🤖 AI Insights", "🧠 Q-Learning", "⚙️ System Status"])
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        "📊 Overview", 
+        "💬 Chat History", 
+        "🤖 AI Insights", 
+        "🧠 Q-Learning", 
+        "📈 Stochastic Models",
+        "🎯 Game Theory",
+        "⚙️ System Status"
+    ])
     
     with tab1:
         st.header("Energy Overview")
@@ -904,6 +941,425 @@ def main():
                     st.metric("Integration", "25% Priority Weight")
     
     with tab5:
+        st.header("📈 Advanced Stochastic Models")
+        
+        if STOCHASTIC_AVAILABLE:
+            # Stochastic model controls
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("🎲 Stochastic Differential Equations")
+                
+                # SDE model selection
+                sde_model_type = st.selectbox(
+                    "SDE Model Type",
+                    ["mean_reverting", "gbm", "jump_diffusion", "heston"],
+                    help="Select stochastic differential equation model"
+                )
+                
+                n_simulations = st.slider("Monte Carlo Simulations", 100, 5000, 1000, step=100)
+                forecast_horizon = st.slider("Forecast Horizon (hours)", 6, 168, 24, step=6)
+                
+                if st.button("🚀 Run Stochastic Forecast"):
+                    with st.spinner("Running stochastic analysis..."):
+                        try:
+                            # Create stochastic forecaster
+                            sde_model = create_stochastic_forecaster(sde_model_type)
+                            
+                            # Fit to recent price data
+                            if data_source == "Real-time Data (MARA API)" and len(data) > 0:
+                                price_series = data['price']
+                            else:
+                                price_series = data['price']
+                            
+                            fitted_params = sde_model.fit(price_series)
+                            
+                            # Generate price scenarios
+                            current_price = price_series.iloc[-1] if len(price_series) > 0 else 50.0
+                            price_scenarios = sde_model.simulate(
+                                n_steps=forecast_horizon,
+                                n_paths=n_simulations,
+                                initial_price=current_price
+                            )
+                            
+                            # Calculate forecast statistics
+                            forecast_mean = np.mean(price_scenarios, axis=0)
+                            forecast_std = np.std(price_scenarios, axis=0)
+                            forecast_q05 = np.percentile(price_scenarios, 5, axis=0)
+                            forecast_q95 = np.percentile(price_scenarios, 95, axis=0)
+                            
+                            st.session_state.stochastic_forecast = {
+                                'scenarios': price_scenarios,
+                                'mean': forecast_mean,
+                                'std': forecast_std,
+                                'q05': forecast_q05,
+                                'q95': forecast_q95,
+                                'model_type': sde_model_type,
+                                'fitted_params': fitted_params,
+                                'n_simulations': n_simulations,
+                                'horizon': forecast_horizon
+                            }
+                            
+                            st.success(f"✅ {sde_model_type.upper()} model fitted and forecast generated!")
+                            
+                        except Exception as e:
+                            st.error(f"❌ Stochastic forecast failed: {e}")
+            
+            with col2:
+                st.subheader("📊 Monte Carlo Risk Analysis")
+                
+                if 'stochastic_forecast' in st.session_state:
+                    forecast_data = st.session_state.stochastic_forecast
+                    
+                    # Display model parameters
+                    st.write("**Model Parameters:**")
+                    for param, value in forecast_data['fitted_params'].items():
+                        st.metric(param.upper(), f"{value:.4f}")
+                    
+                    # Risk metrics
+                    st.write("**Risk Metrics:**")
+                    current_price = data['price'].iloc[-1] if len(data) > 0 else 50.0
+                    
+                    # Value at Risk (VaR)
+                    final_prices = forecast_data['scenarios'][:, -1]
+                    returns = (final_prices - current_price) / current_price
+                    var_95 = np.percentile(returns, 5)
+                    var_99 = np.percentile(returns, 1)
+                    
+                    col_risk1, col_risk2 = st.columns(2)
+                    with col_risk1:
+                        st.metric("VaR (95%)", f"{var_95:.2%}")
+                        st.metric("VaR (99%)", f"{var_99:.2%}")
+                    with col_risk2:
+                        st.metric("Expected Return", f"{np.mean(returns):.2%}")
+                        st.metric("Volatility", f"{np.std(returns):.2%}")
+                else:
+                    st.info("Run stochastic forecast to see risk analysis")
+            
+            # Display stochastic forecast charts
+            if 'stochastic_forecast' in st.session_state:
+                forecast_data = st.session_state.stochastic_forecast
+                
+                st.subheader("📈 Stochastic Price Forecast")
+                
+                # Create forecast visualization
+                fig_stochastic = go.Figure()
+                
+                # Add historical prices
+                if len(data) > 0:
+                    fig_stochastic.add_trace(go.Scatter(
+                        x=data.index[-48:],  # Last 48 hours
+                        y=data['price'].iloc[-48:],
+                        mode='lines',
+                        name='Historical Prices',
+                        line=dict(color='blue', width=2)
+                    ))
+                
+                # Add forecast scenarios (sample of paths)
+                future_times = pd.date_range(
+                    start=data.index[-1] if len(data) > 0 else datetime.now(),
+                    periods=forecast_data['horizon'],
+                    freq='H'
+                )
+                
+                # Show sample of scenarios
+                n_show = min(50, forecast_data['n_simulations'])
+                for i in range(0, forecast_data['n_simulations'], forecast_data['n_simulations'] // n_show):
+                    fig_stochastic.add_trace(go.Scatter(
+                        x=future_times,
+                        y=forecast_data['scenarios'][i, :],
+                        mode='lines',
+                        name='Price Scenario' if i == 0 else None,
+                        showlegend=i == 0,
+                        line=dict(color='lightgray', width=0.5),
+                        opacity=0.3
+                    ))
+                
+                # Add mean forecast
+                fig_stochastic.add_trace(go.Scatter(
+                    x=future_times,
+                    y=forecast_data['mean'],
+                    mode='lines',
+                    name='Mean Forecast',
+                    line=dict(color='red', width=3)
+                ))
+                
+                # Add confidence bands
+                fig_stochastic.add_trace(go.Scatter(
+                    x=future_times,
+                    y=forecast_data['q95'],
+                    mode='lines',
+                    name='95% Confidence',
+                    line=dict(color='red', width=1, dash='dash'),
+                    fill=None
+                ))
+                
+                fig_stochastic.add_trace(go.Scatter(
+                    x=future_times,
+                    y=forecast_data['q05'],
+                    mode='lines',
+                    name='5% Confidence',
+                    line=dict(color='red', width=1, dash='dash'),
+                    fill='tonexty',
+                    fillcolor='rgba(255,0,0,0.1)'
+                ))
+                
+                fig_stochastic.update_layout(
+                    title=f"Stochastic Price Forecast ({forecast_data['model_type'].upper()})",
+                    xaxis_title="Time",
+                    yaxis_title="Price ($/MWh)",
+                    hovermode='x unified'
+                )
+                
+                st.plotly_chart(fig_stochastic, use_container_width=True)
+                
+                # Advanced quantitative models section
+                st.subheader("🔬 Advanced Quantitative Models")
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.write("**GARCH Volatility**")
+                    if st.button("Run GARCH Analysis"):
+                        with st.spinner("Fitting GARCH model..."):
+                            try:
+                                garch_model = GARCHVolatilityModel()
+                                returns = data['price'].pct_change().dropna()
+                                garch_model.fit(returns)
+                                vol_forecast = garch_model.forecast_volatility(24)
+                                
+                                st.success("✅ GARCH model fitted")
+                                st.line_chart(pd.DataFrame({
+                                    'Volatility Forecast': vol_forecast
+                                }))
+                            except Exception as e:
+                                st.error(f"GARCH failed: {e}")
+                
+                with col2:
+                    st.write("**Kalman Filter**")
+                    if st.button("Run Kalman Filter"):
+                        with st.spinner("Fitting Kalman filter..."):
+                            try:
+                                kalman_filter = KalmanStateEstimator()
+                                kalman_filter.fit(data['price'])
+                                forecast_result = kalman_filter.forecast(24)
+                                
+                                st.success("✅ Kalman filter fitted")
+                                st.line_chart(pd.DataFrame({
+                                    'Kalman Forecast': forecast_result['forecast'],
+                                    'Uncertainty': forecast_result['uncertainty']
+                                }))
+                            except Exception as e:
+                                st.error(f"Kalman failed: {e}")
+                
+                with col3:
+                    st.write("**Gaussian Process**")
+                    if st.button("Run GP Regression"):
+                        with st.spinner("Fitting Gaussian Process..."):
+                            try:
+                                from forecasting.feature_engineering import FeatureEngineer
+                                
+                                # Create features for GP
+                                feature_eng = FeatureEngineer()
+                                features_df = feature_eng.engineer_features(data)
+                                
+                                # Fit GP model
+                                gp_model = GaussianProcessForecaster()
+                                X = features_df.select_dtypes(include=[np.number]).fillna(0).iloc[-100:]
+                                y = data['price'].iloc[-100:]
+                                gp_model.fit(X, y)
+                                
+                                # Generate prediction
+                                X_future = X.tail(24)
+                                pred, std = gp_model.predict(X_future)
+                                
+                                st.success("✅ Gaussian Process fitted")
+                                st.line_chart(pd.DataFrame({
+                                    'GP Forecast': pred,
+                                    'GP Uncertainty': std
+                                }))
+                            except Exception as e:
+                                st.error(f"GP failed: {e}")
+        else:
+            st.error("❌ Advanced stochastic models not available. Please ensure all dependencies are installed.")
+    
+    with tab6:
+        st.header("🎯 Advanced Game Theory & Auctions")
+        
+        if ADVANCED_GAME_THEORY_AVAILABLE:
+            # Game theory controls
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("🏛️ Advanced Auction Mechanisms")
+                
+                auction_type = st.selectbox(
+                    "Auction Type",
+                    ["second_price", "first_price", "all_pay", "combinatorial"],
+                    help="Select auction mechanism type"
+                )
+                
+                n_bidders = st.slider("Number of Bidders", 2, 10, 5)
+                n_rounds = st.slider("Auction Rounds", 1, 10, 3)
+                
+                if st.button("🚀 Run Advanced Auction"):
+                    with st.spinner("Running advanced auction simulation..."):
+                        try:
+                            # Create advanced auction mechanism
+                            auction = create_advanced_auction(auction_type)
+                            
+                            # Register bidders with different valuation functions
+                            for bidder_id in range(n_bidders):
+                                def valuation_func(item_chars, price_scenario, bid_id=bidder_id):
+                                    # Different bidder strategies
+                                    base_value = 50 + bid_id * 10
+                                    price_sensitivity = 0.5 + bid_id * 0.1
+                                    return base_value * (1 + price_sensitivity * np.random.random())
+                                
+                                auction.register_bidder(bidder_id, valuation_func)
+                            
+                            # Generate price scenarios for stochastic auction
+                            if 'stochastic_forecast' in st.session_state:
+                                price_scenarios = st.session_state.stochastic_forecast['scenarios'][:100]
+                            else:
+                                # Fallback scenarios
+                                current_price = data['price'].iloc[-1] if len(data) > 0 else 50.0
+                                price_scenarios = np.random.normal(current_price, current_price * 0.1, (100, 24))
+                            
+                            # Run stochastic auction
+                            item_characteristics = {"energy_capacity": 1000, "duration": 24}
+                            auction_result = auction.run_stochastic_auction(
+                                item_characteristics, price_scenarios, n_rounds
+                            )
+                            
+                            st.session_state.auction_result = auction_result
+                            st.success(f"✅ {auction_type.upper()} auction completed!")
+                            
+                        except Exception as e:
+                            st.error(f"❌ Advanced auction failed: {e}")
+            
+            with col2:
+                st.subheader("📊 Auction Results & Analysis")
+                
+                if 'auction_result' in st.session_state:
+                    result = st.session_state.auction_result
+                    
+                    # Display auction metrics
+                    col_metric1, col_metric2 = st.columns(2)
+                    with col_metric1:
+                        st.metric("Total Revenue", f"${result['total_revenue']:.2f}")
+                        st.metric("Auction Type", result['auction_type'].title())
+                    with col_metric2:
+                        st.metric("Average Efficiency", f"{result['average_efficiency']:.3f}")
+                        st.metric("Rounds Completed", result['n_rounds'])
+                    
+                    # Round-by-round results
+                    st.write("**Round-by-Round Results:**")
+                    round_data = []
+                    for round_result in result['round_results']:
+                        round_data.append({
+                            'Round': round_result['round'] + 1,
+                            'Winners': ', '.join(map(str, round_result['winners'])),
+                            'Payment': f"${round_result['total_payment']:.2f}",
+                            'Efficiency': f"{round_result['efficiency']:.3f}"
+                        })
+                    
+                    st.dataframe(pd.DataFrame(round_data))
+                else:
+                    st.info("Run advanced auction to see results")
+            
+            # MPC Controller section
+            st.subheader("🎮 Model Predictive Control (MPC)")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                horizon = st.slider("MPC Horizon", 6, 48, 24, help="MPC optimization horizon in hours")
+                lambda_deg = st.number_input("Degradation Weight", 0.0001, 0.01, 0.0002, format="%.4f")
+                
+                if st.button("🚀 Run MPC Optimization"):
+                    with st.spinner("Running MPC optimization..."):
+                        try:
+                            # Create MPC controller
+                            mpc = MPCController(horizon=horizon, lambda_deg=lambda_deg)
+                            
+                            # Use forecast data
+                            if len(data) >= horizon:
+                                forecast_df = data.tail(horizon).copy()
+                                forecast_df['predicted_price'] = forecast_df['price']
+                            else:
+                                # Generate synthetic forecast
+                                current_price = data['price'].iloc[-1] if len(data) > 0 else 50.0
+                                timestamps = pd.date_range(start=datetime.now(), periods=horizon, freq='H')
+                                forecast_df = pd.DataFrame({
+                                    'timestamp': timestamps,
+                                    'predicted_price': current_price + np.random.normal(0, 2, horizon)
+                                })
+                            
+                            # Current system state
+                            current_state = {
+                                "soc": 0.5,  # 50% state of charge
+                                "available_power_kw": 1000.0
+                            }
+                            
+                            # Run MPC optimization
+                            mpc_result = mpc.optimize_horizon(forecast_df, current_state)
+                            
+                            st.session_state.mpc_result = mpc_result
+                            st.success("✅ MPC optimization completed!")
+                            
+                        except Exception as e:
+                            st.error(f"❌ MPC optimization failed: {e}")
+            
+            with col2:
+                if 'mpc_result' in st.session_state:
+                    mpc_result = st.session_state.mpc_result
+                    
+                    st.write("**MPC Optimization Results:**")
+                    st.metric("Total Energy", f"{np.sum(mpc_result['energy_bids']):.1f} kWh")
+                    st.metric("Peak Power", f"{np.max(mpc_result['energy_bids']):.1f} kW")
+                    st.metric("Optimization Status", mpc_result.get('status', 'Unknown'))
+                    
+                    # Plot MPC results
+                    if len(mpc_result['energy_bids']) > 0:
+                        mpc_df = pd.DataFrame({
+                            'Hour': range(len(mpc_result['energy_bids'])),
+                            'Energy Allocation (kW)': mpc_result['energy_bids']
+                        })
+                        st.line_chart(mpc_df.set_index('Hour'))
+                else:
+                    st.info("Run MPC optimization to see results")
+            
+            # Risk analysis section
+            st.subheader("⚠️ Advanced Risk Analysis")
+            
+            if len(data) > 50:
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.write("**Value at Risk (VaR)**")
+                    returns = data['price'].pct_change().dropna()
+                    var_95 = historical_var(returns, confidence_level=0.95)
+                    var_99 = historical_var(returns, confidence_level=0.99)
+                    st.metric("VaR (95%)", f"{var_95:.2%}")
+                    st.metric("VaR (99%)", f"{var_99:.2%}")
+                
+                with col2:
+                    st.write("**Conditional VaR (CVaR)**")
+                    cvar_95 = historical_cvar(returns, confidence_level=0.95)
+                    cvar_99 = historical_cvar(returns, confidence_level=0.99)
+                    st.metric("CVaR (95%)", f"{cvar_95:.2%}")
+                    st.metric("CVaR (99%)", f"{cvar_99:.2%}")
+                
+                with col3:
+                    st.write("**Risk Adjustment**")
+                    risk_factor = risk_adjustment_factor(returns, target_risk=0.05)
+                    st.metric("Risk Adjustment Factor", f"{risk_factor:.3f}")
+                    st.metric("Risk Level", "High" if risk_factor < 0.9 else "Medium" if risk_factor < 1.1 else "Low")
+        else:
+            st.error("❌ Advanced game theory components not available. Please ensure all dependencies are installed.")
+    
+    with tab7:
         st.header("System Status")
         
         # Get real system status if available
