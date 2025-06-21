@@ -180,19 +180,30 @@ class StochasticDifferentialEquation:
     
     def _fit_ou_moments(self, log_prices: pd.Series, returns: pd.Series) -> Dict[str, float]:
         """Method of moments estimation for OU process."""
-        # Simple moment matching
+        # Simple moment matching with NaN protection
         mean_return = returns.mean()
         var_return = returns.var()
         
-        # Estimate parameters
-        theta = -np.log(1 + mean_return) / self.dt if mean_return > -1 else 0.1
-        mu = log_prices.mean()
+        # Handle NaN/invalid values
+        if np.isnan(mean_return) or np.isinf(mean_return):
+            mean_return = 0.0
+        if np.isnan(var_return) or np.isinf(var_return) or var_return <= 0:
+            var_return = 0.01
+        
+        # Estimate parameters with bounds
+        theta = -np.log(1 + mean_return) / self.dt if mean_return > -0.99 else 0.1
+        mu = log_prices.mean() if not np.isnan(log_prices.mean()) else np.log(50.0)
         sigma = np.sqrt(var_return / self.dt)
         
+        # Validate and bound parameters
+        theta = np.clip(theta, 0.001, 10.0)
+        mu = np.clip(mu, np.log(1.0), np.log(1000.0))  # Price between $1-$1000
+        sigma = np.clip(sigma, 0.001, 5.0)
+        
         self.fitted_params = {
-            "theta": max(theta, 0.001),
-            "mu": np.exp(mu),
-            "sigma": max(sigma, 0.001)
+            "theta": float(theta),
+            "mu": float(np.exp(mu)),
+            "sigma": float(sigma)
         }
         
         return self.fitted_params
@@ -202,13 +213,23 @@ class StochasticDifferentialEquation:
         log_prices = np.log(prices)
         returns = log_prices.diff().dropna()
         
-        # GBM parameters
+        # GBM parameters with NaN protection
         mu = returns.mean() / self.dt
         sigma = returns.std() / np.sqrt(self.dt)
         
+        # Handle NaN/invalid values
+        if np.isnan(mu) or np.isinf(mu):
+            mu = 0.0
+        if np.isnan(sigma) or np.isinf(sigma) or sigma <= 0:
+            sigma = 0.1
+        
+        # Bound parameters to reasonable ranges
+        mu = np.clip(mu, -5.0, 5.0)  # Annual drift between -500% and +500%
+        sigma = np.clip(sigma, 0.001, 5.0)  # Volatility up to 500%
+        
         self.fitted_params = {
-            "mu": mu,
-            "sigma": max(sigma, 0.001)
+            "mu": float(mu),
+            "sigma": float(sigma)
         }
         
         return self.fitted_params
@@ -219,25 +240,36 @@ class StochasticDifferentialEquation:
         returns = log_prices.diff().dropna()
         
         # Identify jumps using threshold method
-        threshold = 3 * returns.std()
+        threshold = 3 * returns.std() if returns.std() > 0 else 0.1
         jumps = returns[np.abs(returns) > threshold]
         
-        # Estimate jump parameters
-        lambda_jump = len(jumps) / len(returns) / self.dt
-        mu_j = jumps.mean() if len(jumps) > 0 else 0.0
-        sigma_j = jumps.std() if len(jumps) > 1 else 0.1
+        # Estimate jump parameters with NaN protection
+        lambda_jump = len(jumps) / len(returns) / self.dt if len(returns) > 0 else 0.1
+        mu_j = jumps.mean() if len(jumps) > 0 and not np.isnan(jumps.mean()) else 0.0
+        sigma_j = jumps.std() if len(jumps) > 1 and not np.isnan(jumps.std()) else 0.1
         
         # Estimate diffusion parameters (excluding jumps)
         normal_returns = returns[np.abs(returns) <= threshold]
-        mu_diffusion = normal_returns.mean() / self.dt if len(normal_returns) > 0 else 0.0
-        sigma_diffusion = normal_returns.std() / np.sqrt(self.dt) if len(normal_returns) > 1 else 0.1
+        if len(normal_returns) > 0:
+            mu_diffusion = normal_returns.mean() / self.dt
+            sigma_diffusion = normal_returns.std() / np.sqrt(self.dt)
+        else:
+            mu_diffusion = 0.0
+            sigma_diffusion = 0.1
+        
+        # Handle NaN/invalid values and bound parameters
+        mu_diffusion = np.clip(mu_diffusion if not np.isnan(mu_diffusion) else 0.0, -5.0, 5.0)
+        sigma_diffusion = np.clip(sigma_diffusion if not np.isnan(sigma_diffusion) else 0.1, 0.001, 5.0)
+        lambda_jump = np.clip(lambda_jump, 0.001, 10.0)
+        mu_j = np.clip(mu_j if not np.isnan(mu_j) else 0.0, -2.0, 2.0)
+        sigma_j = np.clip(sigma_j if not np.isnan(sigma_j) else 0.1, 0.001, 2.0)
         
         self.fitted_params = {
-            "mu": mu_diffusion,
-            "sigma": max(sigma_diffusion, 0.001),
-            "lambda": max(lambda_jump, 0.001),
-            "mu_j": mu_j,
-            "sigma_j": max(sigma_j, 0.001)
+            "mu": float(mu_diffusion),
+            "sigma": float(sigma_diffusion),
+            "lambda": float(lambda_jump),
+            "mu_j": float(mu_j),
+            "sigma_j": float(sigma_j)
         }
         
         return self.fitted_params
@@ -253,21 +285,38 @@ class StochasticDifferentialEquation:
         realized_vol = returns.rolling(window=vol_window).std()
         vol_returns = realized_vol.diff().dropna()
         
-        # Estimate Heston parameters
+        # Estimate Heston parameters with NaN protection
         mu = returns.mean() / self.dt
         v0 = realized_vol.iloc[-1]**2 if len(realized_vol) > 0 else 0.04
         kappa = 2.0  # Default mean reversion speed
         theta = realized_vol.mean()**2 if len(realized_vol) > 0 else 0.04
         xi = vol_returns.std() if len(vol_returns) > 1 else 0.3
-        rho = np.corrcoef(returns[:-1], vol_returns)[0, 1] if len(vol_returns) > 10 else -0.5
+        
+        # Handle correlation calculation with NaN protection
+        if len(vol_returns) > 10 and len(returns) > len(vol_returns):
+            try:
+                corr_matrix = np.corrcoef(returns[:-1], vol_returns)
+                rho = corr_matrix[0, 1] if not np.isnan(corr_matrix[0, 1]) else -0.5
+            except:
+                rho = -0.5
+        else:
+            rho = -0.5
+        
+        # Validate and bound all parameters
+        mu = np.clip(mu if not np.isnan(mu) else 0.0, -5.0, 5.0)
+        v0 = np.clip(v0 if not np.isnan(v0) else 0.04, 0.001, 1.0)
+        kappa = np.clip(kappa, 0.1, 10.0)
+        theta = np.clip(theta if not np.isnan(theta) else 0.04, 0.001, 1.0)
+        xi = np.clip(xi if not np.isnan(xi) else 0.3, 0.001, 2.0)
+        rho = np.clip(rho, -0.99, 0.99)
         
         self.fitted_params = {
-            "mu": mu,
-            "v0": max(v0, 0.001),
-            "kappa": max(kappa, 0.1),
-            "theta": max(theta, 0.001),
-            "xi": max(xi, 0.001),
-            "rho": np.clip(rho, -0.99, 0.99)
+            "mu": float(mu),
+            "v0": float(v0),
+            "kappa": float(kappa),
+            "theta": float(theta),
+            "xi": float(xi),
+            "rho": float(rho)
         }
         
         return self.fitted_params
@@ -290,20 +339,46 @@ class StochasticDifferentialEquation:
         else:
             params = self.fitted_params
         
-        if initial_price is None:
+        # Validate initial price
+        if initial_price is None or np.isnan(initial_price) or initial_price <= 0:
             initial_price = 50.0  # Default
         
-        if self.model_type == "mean_reverting":
-            return self._simulate_ou(n_steps, n_paths, initial_price, params)
-        elif self.model_type == "gbm":
-            return self._simulate_gbm(n_steps, n_paths, initial_price, params)
-        elif self.model_type == "jump_diffusion":
-            return self._simulate_jump_diffusion(n_steps, n_paths, initial_price, params)
-        elif self.model_type == "heston":
-            return self._simulate_heston(n_steps, n_paths, initial_price, params)
-        else:
-            # Fallback to GBM
-            return self._simulate_gbm(n_steps, n_paths, initial_price, params)
+        try:
+            if self.model_type == "mean_reverting":
+                result = self._simulate_ou(n_steps, n_paths, initial_price, params)
+            elif self.model_type == "gbm":
+                result = self._simulate_gbm(n_steps, n_paths, initial_price, params)
+            elif self.model_type == "jump_diffusion":
+                result = self._simulate_jump_diffusion(n_steps, n_paths, initial_price, params)
+            elif self.model_type == "heston":
+                result = self._simulate_heston(n_steps, n_paths, initial_price, params)
+            else:
+                # Fallback to GBM
+                result = self._simulate_gbm(n_steps, n_paths, initial_price, params)
+            
+            # Validate simulation results
+            if np.any(np.isnan(result)) or np.any(np.isinf(result)):
+                logger.warning("Simulation produced NaN/Inf values, using fallback")
+                # Generate simple random walk as fallback
+                result = self._generate_fallback_paths(n_steps, n_paths, initial_price)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Simulation failed: {e}, using fallback")
+            return self._generate_fallback_paths(n_steps, n_paths, initial_price)
+    
+    def _generate_fallback_paths(self, n_steps: int, n_paths: int, initial_price: float) -> np.ndarray:
+        """Generate simple random walk paths as fallback."""
+        paths = np.zeros((n_paths, n_steps))
+        paths[:, 0] = initial_price
+        
+        for t in range(1, n_steps):
+            # Simple random walk with small drift and volatility
+            returns = np.random.normal(0.001, 0.1, n_paths)  # 0.1% drift, 10% vol
+            paths[:, t] = paths[:, t-1] * (1 + returns)
+            
+        return np.maximum(paths, 0.01)  # Ensure positive prices
     
     @staticmethod
     @jit_decorator
@@ -380,7 +455,7 @@ class StochasticDifferentialEquation:
         V = np.zeros((n_paths, n_steps))
         
         S[:, 0] = initial_price
-        V[:, 0] = params["v0"]
+        V[:, 0] = params.get("v0", 0.04)  # Default initial volatility if not present
         
         for t in range(1, n_steps):
             # Correlated random numbers

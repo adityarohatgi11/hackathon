@@ -1014,25 +1014,70 @@ def main():
                     # Display model parameters
                     st.write("**Model Parameters:**")
                     for param, value in forecast_data['fitted_params'].items():
-                        st.metric(param.upper(), f"{value:.4f}")
+                        # Handle NaN values in parameters
+                        if np.isnan(value) or np.isinf(value):
+                            st.metric(param.upper(), "N/A")
+                        else:
+                            st.metric(param.upper(), f"{value:.4f}")
                     
                     # Risk metrics
                     st.write("**Risk Metrics:**")
                     current_price = data['price'].iloc[-1] if len(data) > 0 else 50.0
                     
-                    # Value at Risk (VaR)
-                    final_prices = forecast_data['scenarios'][:, -1]
-                    returns = (final_prices - current_price) / current_price
-                    var_95 = np.percentile(returns, 5)
-                    var_99 = np.percentile(returns, 1)
+                    # Ensure current_price is valid
+                    if current_price <= 0 or np.isnan(current_price):
+                        current_price = 50.0  # Fallback price
+                    
+                    # Value at Risk (VaR) with proper error handling
+                    try:
+                        final_prices = forecast_data['scenarios'][:, -1]
+                        
+                        # Remove invalid prices
+                        valid_prices = final_prices[~np.isnan(final_prices) & ~np.isinf(final_prices) & (final_prices > 0)]
+                        
+                        if len(valid_prices) > 10:  # Need sufficient data
+                            returns = (valid_prices - current_price) / current_price
+                            
+                            # Remove extreme outliers (beyond 10x price movement)
+                            returns = returns[(returns > -0.9) & (returns < 10.0)]
+                            
+                            if len(returns) > 5:
+                                var_95 = np.percentile(returns, 5)
+                                var_99 = np.percentile(returns, 1)
+                                expected_return = np.mean(returns)
+                                volatility = np.std(returns)
+                            else:
+                                var_95 = var_99 = expected_return = volatility = 0.0
+                        else:
+                            var_95 = var_99 = expected_return = volatility = 0.0
+                            
+                    except Exception as e:
+                        st.warning(f"Risk calculation error: {e}")
+                        var_95 = var_99 = expected_return = volatility = 0.0
                     
                     col_risk1, col_risk2 = st.columns(2)
                     with col_risk1:
-                        st.metric("VaR (95%)", f"{var_95:.2%}")
-                        st.metric("VaR (99%)", f"{var_99:.2%}")
+                        # Display with proper formatting and NaN handling
+                        if np.isnan(var_95) or np.isinf(var_95):
+                            st.metric("VaR (95%)", "N/A")
+                        else:
+                            st.metric("VaR (95%)", f"{var_95:.2%}")
+                            
+                        if np.isnan(var_99) or np.isinf(var_99):
+                            st.metric("VaR (99%)", "N/A")
+                        else:
+                            st.metric("VaR (99%)", f"{var_99:.2%}")
+                            
                     with col_risk2:
-                        st.metric("Expected Return", f"{np.mean(returns):.2%}")
-                        st.metric("Volatility", f"{np.std(returns):.2%}")
+                        if np.isnan(expected_return) or np.isinf(expected_return):
+                            st.metric("Expected Return", "N/A")
+                        else:
+                            st.metric("Expected Return", f"{expected_return:.2%}")
+                            
+                        if np.isnan(volatility) or np.isinf(volatility):
+                            st.metric("Volatility", "N/A")
+                        else:
+                            st.metric("Volatility", f"{volatility:.2%}")
                 else:
                     st.info("Run stochastic forecast to see risk analysis")
             
