@@ -1,7 +1,6 @@
 """API Client for GridPilot-GT energy market integration."""
 
 import pandas as pd
-import httpx
 import toml
 from typing import Optional, Dict, Any
 

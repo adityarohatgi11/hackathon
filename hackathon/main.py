@@ -6,11 +6,10 @@ Energy trading and GPU resource allocation system
 
 import sys
 import argparse
-import pandas as pd
 from datetime import datetime
 
 # Import all modules
-from api_client import get_prices, get_inventory, submit_bid, register_site
+from api_client import get_prices, get_inventory, submit_bid
 from forecasting import Forecaster
 from game_theory.bid_generators import build_bid_vector
 from game_theory.vcg_auction import vcg_allocate
@@ -120,8 +119,8 @@ if __name__ == "__main__":
     result = main(simulate=simulate_mode)
     
     if result:
-        print(f"\n🎉 GridPilot-GT executed successfully!")
+        print("\n🎉 GridPilot-GT executed successfully!")
         sys.exit(0)
     else:
-        print(f"\n💥 GridPilot-GT failed!")
+        print("\n💥 GridPilot-GT failed!")
         sys.exit(1) 

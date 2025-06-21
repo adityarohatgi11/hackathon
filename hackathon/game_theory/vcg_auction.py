@@ -1,8 +1,7 @@
 """VCG auction mechanism for truthful resource allocation."""
 
 import pandas as pd
-import numpy as np
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict
 
 
 def vcg_allocate(bids: pd.DataFrame, total_capacity: float) -> Tuple[Dict[str, float], Dict[str, float]]:
