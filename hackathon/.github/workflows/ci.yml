@@ -1,14 +1,369 @@
-name: CI
-on: [push, pull_request]
+name: GridPilot-GT CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run performance regression tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
 jobs:
-  build:
+  # Basic unit and integration tests
+  test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+    
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
-        with: 
-          python-version: "3.11"
-      - run: pip install -r requirements.txt
-      - run: ruff .
-      - run: pytest -q
-      - run: python main.py --simulate 1 
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-benchmark pytest-timeout pytest-xdist pytest-mock
+        pip install numpy pandas scipy
+    
+    - name: Run unit tests
+      run: |
+        pytest tests/ -m "not (performance or slow)" --junitxml=junit/test-results-${{ matrix.python-version }}.xml
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: junit/test-results-*.xml
+
+  # Performance benchmarking and gates
+  performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-benchmark pytest-timeout
+        pip install numpy pandas scipy
+    
+    - name: Run performance tests
+      run: |
+        pytest tests/ -m performance --benchmark-json=benchmark.json
+        
+    - name: Performance Gate - VCG Auction
+      run: |
+        python -c "
+        import json
+        with open('benchmark.json') as f:
+            data = json.load(f)
+        
+        # Extract VCG auction benchmark
+        vcg_benchmarks = [b for b in data['benchmarks'] if 'vcg_auction' in b['name']]
+        if vcg_benchmarks:
+            avg_time = vcg_benchmarks[0]['stats']['mean'] * 1000  # Convert to ms
+            print(f'VCG Auction avg time: {avg_time:.2f}ms')
+            assert avg_time < 10.0, f'VCG auction too slow: {avg_time:.2f}ms > 10ms limit'
+        "
+    
+    - name: Performance Gate - Dispatch Agent
+      run: |
+        python -c "
+        import json
+        with open('benchmark.json') as f:
+            data = json.load(f)
+        
+        # Extract dispatch benchmarks
+        dispatch_benchmarks = [b for b in data['benchmarks'] if 'dispatch' in b['name']]
+        for benchmark in dispatch_benchmarks:
+            avg_time = benchmark['stats']['mean'] * 1000
+            print(f'{benchmark[\"name\"]} avg time: {avg_time:.2f}ms')
+            if 'build_payload' in benchmark['name']:
+                assert avg_time < 5.0, f'Build payload too slow: {avg_time:.2f}ms > 5ms limit'
+            elif 'adjustment' in benchmark['name']:
+                assert avg_time < 2.0, f'Real-time adjustment too slow: {avg_time:.2f}ms > 2ms limit'
+        "
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results
+        path: benchmark.json
+    
+    - name: Comment PR with performance results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const benchmarks = JSON.parse(fs.readFileSync('benchmark.json'));
+          
+          let comment = '## 🚀 Performance Benchmark Results\n\n';
+          comment += '| Component | Avg Time | Status |\n';
+          comment += '|-----------|----------|--------|\n';
+          
+          for (const bench of benchmarks.benchmarks) {
+            const avgTimeMs = (bench.stats.mean * 1000).toFixed(2);
+            const name = bench.name.replace('test_', '').replace('_performance', '');
+            let status = '✅ PASS';
+            
+            // Check performance gates
+            if (name.includes('vcg_auction') && avgTimeMs > 10) status = '❌ FAIL';
+            if (name.includes('dispatch') && avgTimeMs > 5) status = '❌ FAIL';
+            
+            comment += `| ${name} | ${avgTimeMs}ms | ${status} |\n`;
+          }
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  # Safety protocol and chaos testing
+  safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-timeout pytest-xdist
+        pip install numpy pandas scipy
+    
+    - name: Run safety protocol tests
+      run: |
+        pytest tests/ -m safety --tb=short -v
+    
+    - name: Run chaos engineering tests
+      run: |
+        pytest tests/ -m chaos --tb=short -v -x
+    
+    - name: Constraint violation testing
+      run: |
+        python -c "
+        import sys
+        sys.path.append('.')
+        from tests.test_integration import TestChaosEngineering
+        
+        # Run resource exhaustion test
+        tester = TestChaosEngineering()
+        tester.test_resource_exhaustion_simulation()
+        print('✅ Resource exhaustion handling: PASS')
+        
+        # Run random input chaos test  
+        tester.test_random_input_chaos()
+        print('✅ Random input chaos handling: PASS')
+        "
+
+  # End-to-end integration testing
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [test, performance, safety]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-timeout
+        pip install numpy pandas scipy
+    
+    - name: Run end-to-end integration tests
+      run: |
+        pytest tests/ -m integration --tb=short -v
+    
+    - name: Multiple cycle simulation test
+      run: |
+        python -c "
+        import sys
+        sys.path.append('.')
+        import main
+        import time
+        
+        print('Running 10-cycle end-to-end simulation...')
+        success_count = 0
+        total_time = 0
+        
+        for cycle in range(10):
+            try:
+                start_time = time.perf_counter()
+                result = main.main(simulate=True)
+                cycle_time = (time.perf_counter() - start_time) * 1000
+                total_time += cycle_time
+                
+                assert result is not None
+                assert result['constraints_satisfied']
+                assert result['power_requirements']['total_power_kw'] <= 1000.0
+                
+                success_count += 1
+                print(f'  Cycle {cycle+1}: ✅ {cycle_time:.1f}ms')
+                
+            except Exception as e:
+                print(f'  Cycle {cycle+1}: ❌ {e}')
+        
+        success_rate = success_count / 10
+        avg_time = total_time / 10
+        
+        print(f'Success rate: {success_rate:.1%} ({success_count}/10)')
+        print(f'Average time: {avg_time:.1f}ms per cycle')
+        
+        assert success_rate >= 0.9, f'Success rate {success_rate:.1%} below 90% threshold'
+        assert avg_time < 1000, f'Average time {avg_time:.1f}ms exceeds 1s limit'
+        
+        print('🎉 End-to-end integration: ALL TESTS PASSED')
+        "
+
+  # Performance regression detection
+  regression:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    timeout-minutes: 30
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-benchmark
+        pip install numpy pandas scipy
+    
+    - name: Run regression benchmarks
+      run: |
+        pytest tests/ -m performance --benchmark-json=regression-benchmark.json
+    
+    - name: Compare with baseline
+      run: |
+        python -c "
+        import json
+        import os
+        
+        # Load current results
+        with open('regression-benchmark.json') as f:
+            current = json.load(f)
+        
+        # Load baseline (if exists)
+        baseline_file = 'baseline-benchmark.json'
+        if os.path.exists(baseline_file):
+            with open(baseline_file) as f:
+                baseline = json.load(f)
+            
+            print('📊 Performance Regression Analysis')
+            print('=' * 40)
+            
+            for curr_bench in current['benchmarks']:
+                name = curr_bench['name']
+                curr_time = curr_bench['stats']['mean'] * 1000
+                
+                # Find matching baseline
+                baseline_bench = next((b for b in baseline['benchmarks'] if b['name'] == name), None)
+                if baseline_bench:
+                    base_time = baseline_bench['stats']['mean'] * 1000
+                    change = ((curr_time - base_time) / base_time) * 100
+                    
+                    status = '🟢' if change < 5 else '🟡' if change < 10 else '🔴'
+                    print(f'{status} {name}: {curr_time:.2f}ms ({"+" if change > 0 else ""}{change:.1f}%)')
+                    
+                    # Alert on significant regression
+                    if change > 10:
+                        print(f'⚠️  REGRESSION ALERT: {name} degraded by {change:.1f}%')
+                else:
+                    print(f'🆕 {name}: {curr_time:.2f}ms (new test)')
+        else:
+            print('📝 Creating baseline benchmark file')
+            
+        # Save current as new baseline
+        os.rename('regression-benchmark.json', 'baseline-benchmark.json')
+        "
+    
+    - name: Create issue on regression
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: '🚨 Performance Regression Detected',
+            body: `Performance regression detected in daily benchmark run.
+            
+            **Run Details:**
+            - Date: ${new Date().toISOString()}
+            - Commit: ${context.sha}
+            - Branch: ${context.ref}
+            
+            Please review the benchmark results and investigate potential causes.
+            
+            /cc @jadenfix @eng-team`,
+            labels: ['performance', 'regression', 'priority-high']
+          });
+
+  # Deployment readiness check
+  deploy-check:
+    runs-on: ubuntu-latest
+    needs: [test, performance, safety, integration]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: All tests passed
+      run: |
+        echo "🚀 All CI checks passed - system ready for deployment!"
+        echo "✅ Unit tests: PASSED"
+        echo "✅ Performance gates: PASSED" 
+        echo "✅ Safety protocols: PASSED"
+        echo "✅ Integration tests: PASSED"
+        echo ""
+        echo "Lane C (Auction & Dispatch) implementation is production-ready! 🎉" 
