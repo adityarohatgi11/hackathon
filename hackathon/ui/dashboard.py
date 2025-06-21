@@ -36,11 +36,16 @@ try:
     from dispatch.dispatch_agent import build_payload
     # Import enhanced GridPilot-GT functionality
     from main_enhanced import main_enhanced, EnhancedGridPilot
-    # Import Q-learning components
-    from forecasting.advanced_qlearning import create_advanced_qlearning_system
     GRIDPILOT_AVAILABLE = True
 except ImportError:
     GRIDPILOT_AVAILABLE = False
+
+# Import Q-learning components (optional)
+try:
+    from forecasting.advanced_qlearning import create_advanced_qlearning_system
+    QLEARNING_AVAILABLE = True
+except ImportError:
+    QLEARNING_AVAILABLE = False
 
 # Configure page
 st.set_page_config(
@@ -443,37 +448,7 @@ def display_metrics(data):
         )
 
 
-def chat_interface(llm_interface):
-    """Create a chat interface for user queries."""
-    st.subheader("💬 Energy Management Assistant")
-    
-    # Initialize chat history
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-    
-    # Display chat history
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-    
-    # Chat input
-    if prompt := st.chat_input("Ask about energy management, system status, or optimization..."):
-        # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        
-        # Get response from LLM
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                try:
-                    response = llm_interface.process_query(prompt)
-                    st.markdown(response)
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                except Exception as e:
-                    error_msg = f"Sorry, I encountered an error: {str(e)}"
-                    st.error(error_msg)
-                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
+
 
 
 def insights_panel(llm_interface, data):
@@ -711,8 +686,29 @@ def main():
         data = generate_sample_data()
         inventory = None
     
+    # Chat input at the top level (outside of tabs)
+    if llm_interface:
+        st.subheader("💬 AI Assistant")
+        # Initialize chat history
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+        
+        # Chat input outside of tabs
+        if prompt := st.chat_input("Ask about energy management, system status, or optimization..."):
+            # Add user message to chat history
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            
+            # Get response from LLM
+            with st.spinner("Thinking..."):
+                try:
+                    response = llm_interface.process_query(prompt)
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                except Exception as e:
+                    error_msg = f"Sorry, I encountered an error: {str(e)}"
+                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
+    
     # Main content
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "💬 Chat Assistant", "🤖 AI Insights", "🧠 Q-Learning", "⚙️ System Status"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Overview", "💬 Chat History", "🤖 AI Insights", "🧠 Q-Learning", "⚙️ System Status"])
     
     with tab1:
         st.header("Energy Overview")
@@ -771,8 +767,15 @@ def main():
             st.metric("Carbon Footprint", "2.3 tons CO2")
     
     with tab2:
-        if llm_interface:
-            chat_interface(llm_interface)
+        st.header("Chat History")
+        if llm_interface and "messages" in st.session_state:
+            # Display chat history
+            for message in st.session_state.messages:
+                with st.chat_message(message["role"]):
+                    st.markdown(message["content"])
+            
+            if not st.session_state.messages:
+                st.info("Start a conversation using the chat input above!")
         else:
             st.error("Chat interface not available")
     
@@ -787,51 +790,54 @@ def main():
     with tab4:
         st.header("🧠 Q-Learning Analytics")
         
-        # Q-Learning controls
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Training Controls")
-            episodes = st.slider("Training Episodes", 50, 500, 100, step=50)
-            if st.button("🚀 Train Q-Learning Agent"):
-                with st.spinner("Training Q-learning agent..."):
-                    try:
-                        # Import and run training
-                        from train_qlearning import QLearningTrainer
-                        trainer = QLearningTrainer(episodes=episodes)
-                        training_results = trainer.train()
-                        
-                        st.success(f"✅ Training completed in {training_results['training_time']:.1f}s")
-                        st.session_state.qlearning_training_results = training_results
-                        
-                    except Exception as e:
-                        st.error(f"❌ Training failed: {e}")
-        
-        with col2:
-            st.subheader("Q-Learning Status")
-            try:
-                # Test Q-learning system
-                agent, encoder, reward_fn = create_advanced_qlearning_system()
-                st.success("✅ Q-Learning system operational")
-                st.info(f"State space: {agent.state_size} dimensions")
-                st.info(f"Action space: {agent.action_size} actions")
-                st.info(f"Confidence: {1.0 - agent.epsilon:.3f}")
-                
-                # Show current strategy
-                test_state = encoder.encode_state({
-                    'price': data['price'].iloc[-1] if len(data) > 0 else 50.0,
-                    'soc': data['battery_soc'].iloc[-1] if len(data) > 0 else 0.5,
-                    'demand': data['demand'].iloc[-1] if len(data) > 0 else 0.5,
-                    'volatility': 0.12,
-                    'hour_of_day': datetime.now().hour,
-                    'day_of_week': datetime.now().weekday()
-                })
-                strategy = agent.get_trading_strategy(test_state)
-                st.metric("Current Strategy", strategy['action_name'].title())
-                st.metric("Allocation %", f"{strategy['allocation_pct']*100:.0f}%")
-                
-            except Exception as e:
-                st.error(f"❌ Q-Learning system error: {e}")
+        if QLEARNING_AVAILABLE:
+            # Q-Learning controls
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("Training Controls")
+                episodes = st.slider("Training Episodes", 50, 500, 100, step=50)
+                if st.button("🚀 Train Q-Learning Agent"):
+                    with st.spinner("Training Q-learning agent..."):
+                        try:
+                            # Import and run training
+                            from train_qlearning import QLearningTrainer
+                            trainer = QLearningTrainer(episodes=episodes)
+                            training_results = trainer.train()
+                            
+                            st.success(f"✅ Training completed in {training_results['training_time']:.1f}s")
+                            st.session_state.qlearning_training_results = training_results
+                            
+                        except Exception as e:
+                            st.error(f"❌ Training failed: {e}")
+            
+            with col2:
+                st.subheader("Q-Learning Status")
+                try:
+                    # Test Q-learning system
+                    agent, encoder, reward_fn = create_advanced_qlearning_system()
+                    st.success("✅ Q-Learning system operational")
+                    st.info(f"State space: {agent.state_size} dimensions")
+                    st.info(f"Action space: {agent.action_size} actions")
+                    st.info(f"Confidence: {1.0 - agent.epsilon:.3f}")
+                    
+                    # Show current strategy
+                    test_state = encoder.encode_state({
+                        'price': data['price'].iloc[-1] if len(data) > 0 else 50.0,
+                        'soc': data['battery_soc'].iloc[-1] if len(data) > 0 else 0.5,
+                        'demand': data['demand'].iloc[-1] if len(data) > 0 else 0.5,
+                        'volatility': 0.12,
+                        'hour_of_day': datetime.now().hour,
+                        'day_of_week': datetime.now().weekday()
+                    })
+                    strategy = agent.get_trading_strategy(test_state)
+                    st.metric("Current Strategy", strategy['action_name'].title())
+                    st.metric("Allocation %", f"{strategy['allocation_pct']*100:.0f}%")
+                    
+                except Exception as e:
+                    st.error(f"❌ Q-Learning system error: {e}")
+        else:
+            st.error("❌ Q-Learning system not available. Please ensure all dependencies are installed.")
         
         # Show training results if available
         if 'qlearning_training_results' in st.session_state:
