@@ -603,6 +603,16 @@ class ReinforcementLearningAgent:
         volatility = continuous_state.get("volatility", 0.1)
         demand = continuous_state.get("demand", 0.5)
         
+        # Handle NaN values
+        if np.isnan(volatility):
+            volatility = 0.1
+        if np.isnan(price):
+            price = 50.0
+        if np.isnan(soc):
+            soc = 0.5
+        if np.isnan(demand):
+            demand = 0.5
+
         # Normalize and discretize
         price_bin = min(int(price / 20), 3)  # 0-3 based on price ranges
         soc_bin = min(int(soc * 4), 3)      # 0-3 based on SOC quartiles
