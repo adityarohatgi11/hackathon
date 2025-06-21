@@ -20,9 +20,9 @@ import pandas as pd
 import numpy as np
 
 # Import GridPilot-GT modules
-from api_client import get_prices, get_inventory, submit_bid, test_mara_api_connection
-from forecasting import Forecaster, create_forecaster
-from forecasting.advanced_forecaster import create_advanced_forecaster
+from api_client import get_prices, get_inventory, submit_bid
+from api_client.client import test_mara_api_connection
+from forecasting import Forecaster, create_advanced_forecaster, get_forecaster
 from game_theory.bid_generators import build_bid_vector, portfolio_optimization, dynamic_pricing_strategy
 from game_theory.vcg_auction import vcg_allocate, auction_efficiency_metrics
 from control.cooling_model import cooling_for_gpu_kW
@@ -108,7 +108,7 @@ async def startup_event():
     logger.info("🚀 GridPilot-GT FastAPI server starting up...")
     
     # Initialize forecaster
-    system_state.forecaster = create_forecaster()
+    system_state.forecaster = get_forecaster()
     
     # Test API connectivity
     try:
@@ -266,7 +266,7 @@ async def generate_forecast(request: ForecastRequest):
             if request.use_advanced:
                 system_state.forecaster = create_advanced_forecaster()
             else:
-                system_state.forecaster = create_forecaster()
+                system_state.forecaster = get_forecaster()
         
         # Generate forecast
         forecast_df = system_state.forecaster.predict_next(
@@ -331,7 +331,7 @@ async def optimize_allocation(request: OptimizationRequest):
         if system_state.last_forecast is None:
             # Generate forecast first
             if system_state.forecaster is None:
-                system_state.forecaster = create_forecaster()
+                system_state.forecaster = get_forecaster()
             system_state.last_forecast = system_state.forecaster.predict_next(
                 system_state.last_prices, periods=request.forecast_periods
             )
