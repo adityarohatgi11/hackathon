@@ -7,7 +7,7 @@
 api_key = "09e36d82-3f97-4766-adf8-4255d249b1b6"  # Replace with your actual MARA API key
 base_url = "https://mara-hackathon-api.onrender.com"
 site_name = "JAAM"  # Your site name for registration
-site_power_kw = 1000000  # Site power capacity in watts (1MW default)
+site_power_kw = 1000  # Site power capacity in kW (1MW default)
 timeout = 30
 retries = 3
 

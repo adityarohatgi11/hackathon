@@ -22,17 +22,27 @@ from datetime import datetime, timedelta
 import json
 import pickle
 
+# Initialize logger first
+logger = logging.getLogger(__name__)
+
 try:
     import torch
     import torch.nn as nn
     import torch.optim as optim
     import torch.nn.functional as F
-    TORCH_AVAILABLE = True
+    
+    # Test PyTorch functionality
+    try:
+        test_tensor = torch.tensor([1.0])
+        TORCH_AVAILABLE = True
+        logger.info("PyTorch backend initialized successfully")
+    except Exception as e:
+        TORCH_AVAILABLE = False
+        logger.warning(f"PyTorch available but not functional: {e}")
+        
 except ImportError:
     TORCH_AVAILABLE = False
-    print("PyTorch not available - using numpy-based Q-learning")
-
-logger = logging.getLogger(__name__)
+    logger.warning("PyTorch not available - using numpy-based Q-learning")
 
 # Experience tuple for replay buffer
 Experience = namedtuple('Experience', 
@@ -688,9 +698,107 @@ class EnergyTradingRewardFunction:
 
 
 # Factory function
+class SimpleNumpyQAgent:
+    """Simple numpy-based Q-learning agent as fallback."""
+    
+    def __init__(self, state_size: int, action_size: int, learning_rate: float = 0.1):
+        self.state_size = state_size
+        self.action_size = action_size
+        self.learning_rate = learning_rate
+        self.epsilon = 1.0
+        self.epsilon_decay = 0.995
+        self.epsilon_min = 0.01
+        self.gamma = 0.99
+        
+        # Simple Q-table approximation using state hash
+        self.q_values = {}
+        self.action_counts = np.zeros(action_size)
+        
+        logger.info(f"Simple numpy Q-agent initialized: {state_size}D state, {action_size} actions")
+    
+    def _hash_state(self, state: np.ndarray) -> str:
+        """Create hash key for state."""
+        # Discretize continuous state for Q-table
+        discretized = np.round(state * 10).astype(int)
+        return str(discretized.tolist())
+    
+    def act(self, state: np.ndarray, training: bool = True) -> int:
+        """Choose action using epsilon-greedy policy."""
+        if training and np.random.random() < self.epsilon:
+            action = np.random.randint(self.action_size)
+        else:
+            state_key = self._hash_state(state)
+            if state_key in self.q_values:
+                action = np.argmax(self.q_values[state_key])
+            else:
+                action = np.random.randint(self.action_size)
+        
+        self.action_counts[action] += 1
+        return action
+    
+    def remember(self, state: np.ndarray, action: int, reward: float, 
+                next_state: np.ndarray, done: bool):
+        """Update Q-values using Q-learning update rule."""
+        state_key = self._hash_state(state)
+        next_state_key = self._hash_state(next_state)
+        
+        # Initialize Q-values if not seen before
+        if state_key not in self.q_values:
+            self.q_values[state_key] = np.zeros(self.action_size)
+        if next_state_key not in self.q_values:
+            self.q_values[next_state_key] = np.zeros(self.action_size)
+        
+        # Q-learning update
+        current_q = self.q_values[state_key][action]
+        next_max_q = np.max(self.q_values[next_state_key]) if not done else 0
+        target_q = reward + self.gamma * next_max_q
+        
+        self.q_values[state_key][action] += self.learning_rate * (target_q - current_q)
+        
+        # Decay epsilon
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+    
+    def get_trading_strategy(self, state: np.ndarray) -> Dict[str, float]:
+        """Get trading strategy based on current state."""
+        action = self.act(state, training=False)
+        
+        # Map actions to trading strategies
+        strategies = {
+            0: {"conservative": 0.8, "moderate": 0.2, "aggressive": 0.0},
+            1: {"conservative": 0.6, "moderate": 0.4, "aggressive": 0.0},
+            2: {"conservative": 0.3, "moderate": 0.5, "aggressive": 0.2},
+            3: {"conservative": 0.1, "moderate": 0.4, "aggressive": 0.5},
+            4: {"conservative": 0.0, "moderate": 0.2, "aggressive": 0.8}
+        }
+        
+        return strategies.get(action, strategies[2])  # Default to moderate
+    
+    def save_model(self, filepath: str):
+        """Save Q-values to file."""
+        data = {
+            'q_values': self.q_values,
+            'epsilon': self.epsilon,
+            'action_counts': self.action_counts.tolist()
+        }
+        with open(filepath, 'w') as f:
+            json.dump(data, f)
+    
+    def load_model(self, filepath: str):
+        """Load Q-values from file."""
+        try:
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+            self.q_values = data.get('q_values', {})
+            self.epsilon = data.get('epsilon', self.epsilon)
+            self.action_counts = np.array(data.get('action_counts', [0] * self.action_size))
+        except FileNotFoundError:
+            logger.warning(f"Model file {filepath} not found, using fresh model")
+
+
 def create_advanced_qlearning_system(state_lookback: int = 24,
                                    action_size: int = 5,
-                                   learning_rate: float = 0.001) -> Tuple[AdvancedDQNAgent, AdvancedStateEncoder, EnergyTradingRewardFunction]:
+                                   learning_rate: float = 0.001) -> Tuple[Any, AdvancedStateEncoder, EnergyTradingRewardFunction]:
     """
     Create a complete advanced Q-learning system for energy trading.
     
@@ -706,13 +814,32 @@ def create_advanced_qlearning_system(state_lookback: int = 24,
     state_encoder = AdvancedStateEncoder(lookback_hours=state_lookback)
     state_size = state_encoder.get_state_size()
     
-    agent = AdvancedDQNAgent(
-        state_size=state_size,
-        action_size=action_size,
-        learning_rate=learning_rate,
-        double_dqn=True,
-        n_step=3
-    )
+    # Choose agent based on PyTorch availability
+    if TORCH_AVAILABLE:
+        try:
+            agent = AdvancedDQNAgent(
+                state_size=state_size,
+                action_size=action_size,
+                learning_rate=learning_rate,
+                double_dqn=True,
+                n_step=3
+            )
+            logger.info("Using PyTorch backend")
+        except Exception as e:
+            logger.warning(f"PyTorch agent failed to initialize: {e}")
+            logger.info("Falling back to numpy backend")
+            agent = SimpleNumpyQAgent(
+                state_size=state_size,
+                action_size=action_size,
+                learning_rate=learning_rate
+            )
+    else:
+        logger.info("Using NumPy backend")
+        agent = SimpleNumpyQAgent(
+            state_size=state_size,
+            action_size=action_size,
+            learning_rate=learning_rate
+        )
     
     reward_function = EnergyTradingRewardFunction()
     
