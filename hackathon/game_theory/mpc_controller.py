@@ -59,6 +59,7 @@ def _load_config(config_path: str = "config.toml") -> Dict[str, Any]:
             "BATTERY_EFF": 0.94,
             "LAMBDA_DEG": 0.0002,
             "site_power_kw": 1000,
+            "api": {"site_power_kw": 1000}
         }
 
 
@@ -143,7 +144,7 @@ class MPCController:
         prices = forecast["predicted_price"].iloc[: self.horizon].to_numpy()
 
         soc_init = float(current_state.get("soc", 0.5))
-        p_available = float(current_state.get("available_power_kw", self._cfg["site_power_kw"]))
+        p_available = float(current_state.get("available_power_kw", self._cfg.get("api", {}).get("site_power_kw", 1000)))
 
         # Attempt a convex optimisation with CVXPY -------------------------
         if _HAS_CVXPY:

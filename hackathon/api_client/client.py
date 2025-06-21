@@ -8,6 +8,17 @@ from datetime import datetime, timedelta
 import time
 import numpy as np
 
+# HTTP client - try httpx first, fallback to requests
+try:
+    import httpx
+    HAS_HTTPX = True
+except ImportError:
+    try:
+        import requests
+        HAS_HTTPX = False
+    except ImportError:
+        HAS_HTTPX = None
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -52,26 +63,43 @@ def load_config() -> Dict[str, Any]:
 def _make_request(url: str, headers: Dict[str, str], params: Optional[Dict] = None, 
                   retries: int = 3, method: str = "GET", json_data: Optional[Dict] = None) -> Dict[str, Any]:
     """Make HTTP request with retry logic and error handling."""
+    
+    # If no HTTP client available, use fallback
+    if HAS_HTTPX is None:
+        logger.error("No HTTP client available (httpx or requests). Using fallback data.")
+        raise APIClientError("No HTTP client available")
+    
     for attempt in range(retries):
         try:
-            with httpx.Client(timeout=30.0) as client:
+            if HAS_HTTPX:
+                # Use httpx
+                with httpx.Client(timeout=30.0) as client:
+                    if method.upper() == "POST":
+                        response = client.post(url, headers=headers, json=json_data)
+                    elif method.upper() == "PUT":
+                        response = client.put(url, headers=headers, json=json_data)
+                    else:
+                        response = client.get(url, headers=headers, params=params or {})
+                    
+                    response.raise_for_status()
+                    return response.json()
+            else:
+                # Use requests as fallback
                 if method.upper() == "POST":
-                    response = client.post(url, headers=headers, json=json_data)
+                    response = requests.post(url, headers=headers, json=json_data, timeout=30.0)
                 elif method.upper() == "PUT":
-                    response = client.put(url, headers=headers, json=json_data)
+                    response = requests.put(url, headers=headers, json=json_data, timeout=30.0)
                 else:
-                    response = client.get(url, headers=headers, params=params or {})
+                    response = requests.get(url, headers=headers, params=params or {}, timeout=30.0)
                 
                 response.raise_for_status()
                 return response.json()
-        except httpx.RequestError as e:
+                
+        except Exception as e:
             logger.warning(f"Request attempt {attempt + 1} failed: {e}")
             if attempt == retries - 1:
                 raise APIClientError(f"Request failed after {retries} attempts: {e}")
             time.sleep(2 ** attempt)  # Exponential backoff
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error {e.response.status_code}: {e}")
-            raise APIClientError(f"HTTP error: {e}")
     
     raise APIClientError("Unexpected error in request handling")
 
