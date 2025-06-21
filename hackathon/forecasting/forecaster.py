@@ -22,6 +22,13 @@ except ImportError:
 
 from .feature_engineering import FeatureEngineer
 
+# Try to import advanced forecaster
+try:
+    from .advanced_forecaster import QuantitativeForecaster
+    HAS_QUANTITATIVE = True
+except ImportError:
+    HAS_QUANTITATIVE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -299,19 +306,19 @@ class Forecaster:
         """Simple fallback forecasting method."""
         logger.info("Using simple forecasting method")
         
-        # Generate future timestamps
-        last_time = prices['timestamp'].iloc[-1]
-        future_times = pd.date_range(
-            start=last_time + pd.Timedelta(hours=1),
-            periods=periods,
-            freq='H'
-        )
+        # Handle empty price data gracefully
+        if len(prices) == 0 or 'timestamp' not in prices.columns or 'price' not in prices.columns:
+            last_time = pd.Timestamp.now()
+            last_price = 50.0
+        else:
+            last_time = prices['timestamp'].iloc[-1]
+            last_price = prices['price'].iloc[-1]
         
-        # Simple trend + seasonality + noise
-        last_price = prices['price'].iloc[-1] if len(prices) > 0 else 50.0
-        
-        # Estimate trend from recent data
-        if len(prices) >= 24:
+        # Generate future timestamps early for reuse
+        future_times = pd.date_range(start=last_time + pd.Timedelta(hours=1), periods=periods, freq='H')
+
+        # Estimate trend from recent data (if available)
+        if len(prices) >= 24 and 'price' in prices.columns:
             recent_trend = (prices['price'].tail(24).mean() - prices['price'].head(24).mean()) / 24
         else:
             recent_trend = 0
@@ -325,6 +332,9 @@ class Forecaster:
         noise = np.random.normal(0, 2, periods)
         
         predictions = last_price + trend_component + seasonal + noise
+        # Clip predictions to ensure non-negative prices
+        predictions = np.clip(predictions, 0.01, None)
+        
         uncertainty = np.abs(predictions * 0.15)  # 15% uncertainty
         
         return pd.DataFrame({
@@ -398,22 +408,24 @@ class Forecaster:
         if len(prices) == 0:
             return pd.DataFrame()
         
-        # Calculate rolling volatility
+        # Calculate rolling volatility (allowing smaller sample sizes)
         prices_copy = prices.copy()
         prices_copy['returns'] = prices_copy['price'].pct_change()
         
-        # Multiple volatility measures
-        vol_6h = prices_copy['returns'].rolling(window=6).std()
-        vol_24h = prices_copy['returns'].rolling(window=24).std()
-        vol_7d = prices_copy['returns'].rolling(window=168).std()
+        # Multiple volatility measures with minimum periods to avoid NaNs
+        vol_6h = prices_copy['returns'].rolling(window=6, min_periods=3).std()
+        vol_24h = prices_copy['returns'].rolling(window=24, min_periods=6).std()
+        vol_7d = prices_copy['returns'].rolling(window=168, min_periods=24).std()
         
         # GARCH-like volatility persistence
         alpha = 0.1  # Short-term weight
         beta = 0.85   # Persistence
         
-        # Simple volatility forecast
-        latest_vol = vol_24h.iloc[-1] if len(vol_24h) > 0 else 0.1
-        forecast_vol = alpha * latest_vol + beta * vol_7d.iloc[-1] if len(vol_7d) > 0 else latest_vol
+        # Latest vol (fallback to non-NaN)
+        latest_vol = vol_24h.dropna().iloc[-1] if vol_24h.dropna().any() else 0.05
+        long_vol = vol_7d.dropna().iloc[-1] if vol_7d.dropna().any() else latest_vol
+        
+        forecast_vol = alpha * latest_vol + beta * long_vol
         
         return pd.DataFrame({
             'timestamp': prices['timestamp'],
@@ -458,4 +470,24 @@ class Forecaster:
         Returns:
             Dictionary with performance metrics
         """
-        return self.model_metrics.copy() 
+        return self.model_metrics.copy()
+
+
+def create_advanced_forecaster(**kwargs) -> 'Forecaster':
+    """Factory function to create the most advanced forecaster available.
+    
+    Returns:
+        QuantitativeForecaster if advanced libs available, else basic Forecaster
+    """
+    if HAS_QUANTITATIVE:
+        logger.info("Creating QuantitativeForecaster with advanced models")
+        return QuantitativeForecaster(**kwargs)
+    else:
+        logger.info("Creating basic Forecaster (advanced models not available)")
+        return Forecaster(**kwargs)
+
+
+# Backwards compatibility - use advanced forecaster by default if available
+def get_forecaster(**kwargs) -> 'Forecaster':
+    """Get the best available forecaster."""
+    return create_advanced_forecaster(**kwargs) 
