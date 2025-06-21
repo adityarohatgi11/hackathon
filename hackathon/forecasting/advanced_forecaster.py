@@ -81,7 +81,7 @@ class QuantitativeForecaster(Forecaster):
         
         try:
             # Calculate returns for GARCH
-            returns = prices['price'].pct_change().dropna()
+            returns = prices['price'].pct_change(fill_method=None).dropna()
             
             # Fit advanced models
             self._fit_garch_model(returns)
@@ -227,6 +227,10 @@ class QuantitativeForecaster(Forecaster):
         
         # Generate advanced forecasts
         try:
+            # CRITICAL: Ensure base forecast has data
+            if len(base_forecast) == 0 or 'predicted_price' not in base_forecast.columns:
+                return base_forecast
+                
             # Collect predictions from all models
             predictions = {'base': base_forecast['predicted_price'].values}
             
@@ -260,13 +264,17 @@ class QuantitativeForecaster(Forecaster):
             # Advanced uncertainty quantification
             advanced_uncertainty = self._quantify_advanced_uncertainty(prices, combined_forecast, periods)
             
+            # CRITICAL: Cap uncertainty to reasonable bounds (max 20% of price or $50/MWh)
+            max_uncertainty = np.minimum(combined_forecast * 0.2, 50.0)
+            advanced_uncertainty = np.minimum(advanced_uncertainty, max_uncertainty)
+            
             # Update the forecast with advanced results
-            base_forecast['predicted_price'] = combined_forecast
+            base_forecast['predicted_price'] = np.clip(combined_forecast, 0.01, 500.0)  # CRITICAL: Ensure positive and reasonable
             base_forecast['σ_energy'] = advanced_uncertainty
             base_forecast['σ_hash'] = advanced_uncertainty * 0.5
             base_forecast['σ_token'] = advanced_uncertainty * 0.3
-            base_forecast['lower_bound'] = combined_forecast - advanced_uncertainty
-            base_forecast['upper_bound'] = combined_forecast + advanced_uncertainty
+            base_forecast['lower_bound'] = np.clip(combined_forecast - advanced_uncertainty, 0.01, 500.0)
+            base_forecast['upper_bound'] = np.clip(combined_forecast + advanced_uncertainty, base_forecast['lower_bound'], 500.0)
             base_forecast['method'] = 'advanced_quantitative'
             
             logger.info(f"Advanced forecast generated with {len(predictions)} models")

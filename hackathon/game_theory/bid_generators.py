@@ -32,6 +32,9 @@ def build_bid_vector(current_price: float, forecast: pd.DataFrame,
     
     adjusted_bids = base_bids * soc_factor - degradation_cost
     
+    # CRITICAL: Ensure all bids are positive (cannot bid negative prices)
+    adjusted_bids = np.maximum(adjusted_bids, 0.01)
+    
     return pd.DataFrame({
         'timestamp': forecast['timestamp'],
         'energy_bid': adjusted_bids,

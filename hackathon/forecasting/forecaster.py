@@ -190,6 +190,13 @@ class Forecaster:
         """
         logger.info(f"Generating {periods}-hour forecast")
         
+        # CRITICAL: Handle edge cases
+        if periods <= 0:
+            return pd.DataFrame(columns=[
+                'timestamp', 'predicted_price', 'lower_bound', 'upper_bound',
+                'σ_energy', 'σ_hash', 'σ_token', 'method'
+            ])
+        
         # Fit models if not already trained
         if not self.is_trained:
             self.fit(prices)
@@ -332,10 +339,14 @@ class Forecaster:
         noise = np.random.normal(0, 2, periods)
         
         predictions = last_price + trend_component + seasonal + noise
-        # Clip predictions to ensure non-negative prices
-        predictions = np.clip(predictions, 0.01, None)
+        # CRITICAL: Ensure all predictions are positive and reasonable
+        predictions = np.maximum(predictions, 0.01)
+        predictions = np.minimum(predictions, 500.0)  # Cap extreme values
         
         uncertainty = np.abs(predictions * 0.15)  # 15% uncertainty
+        
+        # CRITICAL: Cap uncertainty to reasonable bounds (max $50/MWh)
+        uncertainty = np.minimum(uncertainty, 50.0)
         
         return pd.DataFrame({
             'timestamp': future_times,
@@ -351,6 +362,10 @@ class Forecaster:
     def _combine_forecasts(self, forecasts: Dict[str, pd.DataFrame], 
                           prices: pd.DataFrame, periods: int) -> pd.DataFrame:
         """Combine multiple forecasts into final prediction."""
+        # CRITICAL: Handle empty forecasts
+        if not forecasts:
+            return self._predict_simple(prices, periods)
+            
         if len(forecasts) == 1:
             forecast_df = list(forecasts.values())[0]
         else:
@@ -364,31 +379,52 @@ class Forecaster:
                 prophet_weight /= total_weight
                 ensemble_weight /= total_weight
             
+            # CRITICAL: Check if forecasts have data
+            valid_forecasts = {k: v for k, v in forecasts.items() if len(v) > 0 and 'predicted_price' in v.columns}
+            if not valid_forecasts:
+                return self._predict_simple(prices, periods)
+            
             # Combine predictions
             combined_pred = np.zeros(periods)
             combined_lower = np.zeros(periods)
             combined_upper = np.zeros(periods)
             
-            if 'prophet' in forecasts:
-                combined_pred += prophet_weight * forecasts['prophet']['predicted_price'].values
-                combined_lower += prophet_weight * forecasts['prophet']['lower_bound'].values
-                combined_upper += prophet_weight * forecasts['prophet']['upper_bound'].values
+            if 'prophet' in valid_forecasts and 'predicted_price' in valid_forecasts['prophet'].columns:
+                combined_pred += prophet_weight * valid_forecasts['prophet']['predicted_price'].values
+                combined_lower += prophet_weight * valid_forecasts['prophet']['lower_bound'].values
+                combined_upper += prophet_weight * valid_forecasts['prophet']['upper_bound'].values
             
-            if 'ensemble' in forecasts:
-                combined_pred += ensemble_weight * forecasts['ensemble']['predicted_price'].values
-                combined_lower += ensemble_weight * forecasts['ensemble']['lower_bound'].values
-                combined_upper += ensemble_weight * forecasts['ensemble']['upper_bound'].values
+            if 'ensemble' in valid_forecasts and 'predicted_price' in valid_forecasts['ensemble'].columns:
+                combined_pred += ensemble_weight * valid_forecasts['ensemble']['predicted_price'].values
+                combined_lower += ensemble_weight * valid_forecasts['ensemble']['lower_bound'].values
+                combined_upper += ensemble_weight * valid_forecasts['ensemble']['upper_bound'].values
             
             forecast_df = pd.DataFrame({
-                'timestamp': forecasts[list(forecasts.keys())[0]]['timestamp'],
+                'timestamp': valid_forecasts[list(valid_forecasts.keys())[0]]['timestamp'],
                 'predicted_price': combined_pred,
                 'lower_bound': combined_lower,
                 'upper_bound': combined_upper,
                 'method': 'combined'
             })
         
+        # CRITICAL: Ensure all predictions are positive and reasonable
+        forecast_df['predicted_price'] = np.maximum(forecast_df['predicted_price'], 0.01)
+        forecast_df['lower_bound'] = np.maximum(forecast_df['lower_bound'], 0.01)
+        forecast_df['upper_bound'] = np.maximum(forecast_df['upper_bound'], forecast_df['lower_bound'])
+        
+        # CRITICAL: Cap extreme predictions (energy prices rarely exceed $500/MWh)
+        max_reasonable_price = 500.0
+        forecast_df['predicted_price'] = np.minimum(forecast_df['predicted_price'], max_reasonable_price)
+        forecast_df['upper_bound'] = np.minimum(forecast_df['upper_bound'], max_reasonable_price)
+        forecast_df['lower_bound'] = np.minimum(forecast_df['lower_bound'], forecast_df['upper_bound'])
+        
         # Add uncertainty metrics for compatibility
         uncertainty = (forecast_df['upper_bound'] - forecast_df['lower_bound']) / 2
+        
+        # CRITICAL: Cap uncertainty to reasonable bounds (max 20% of price or $50/MWh)
+        max_uncertainty = np.minimum(forecast_df['predicted_price'] * 0.2, 50.0)
+        uncertainty = np.minimum(uncertainty, max_uncertainty)
+        
         forecast_df['σ_energy'] = uncertainty
         forecast_df['σ_hash'] = uncertainty * 0.5
         forecast_df['σ_token'] = uncertainty * 0.3
@@ -410,7 +446,7 @@ class Forecaster:
         
         # Calculate rolling volatility (allowing smaller sample sizes)
         prices_copy = prices.copy()
-        prices_copy['returns'] = prices_copy['price'].pct_change()
+        prices_copy['returns'] = prices_copy['price'].pct_change(fill_method=None)
         
         # Multiple volatility measures with minimum periods to avoid NaNs
         vol_6h = prices_copy['returns'].rolling(window=6, min_periods=3).std()

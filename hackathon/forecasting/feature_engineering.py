@@ -105,9 +105,9 @@ class FeatureEngineer:
         df['price_change_3h'] = df['price'].diff(3)
         df['price_change_24h'] = df['price'].diff(24)
         
-        # Price returns
-        df['price_return_1h'] = df['price'].pct_change(1)
-        df['price_return_24h'] = df['price'].pct_change(24)
+        # Price returns - fix FutureWarning
+        df['price_return_1h'] = df['price'].pct_change(1, fill_method=None)
+        df['price_return_24h'] = df['price'].pct_change(24, fill_method=None)
         
         # Volatility measures
         df['price_volatility_6h'] = df['price_return_1h'].rolling(window=6).std()
