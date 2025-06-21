@@ -7,6 +7,7 @@ Energy trading and GPU resource allocation system
 import sys
 import argparse
 from datetime import datetime
+import pandas as pd
 
 # Import all modules
 from api_client import get_prices, get_inventory, submit_bid
@@ -47,10 +48,11 @@ def main(simulate: bool = False):
         soc = inventory['battery_soc']
         lambda_deg = 0.0002  # Battery degradation cost
         
+        uncertainty_df = pd.DataFrame(forecast[["σ_energy","σ_hash","σ_token"]])
         bids = build_bid_vector(
             current_price=current_price,
             forecast=forecast,
-            uncertainty=forecast[["σ_energy","σ_hash","σ_token"]],
+            uncertainty=uncertainty_df,
             soc=soc,
             lambda_deg=lambda_deg
         )
@@ -64,7 +66,7 @@ def main(simulate: bool = False):
         
         # Step 5: Calculate cooling requirements
         print("\n❄️ Calculating cooling requirements...")
-        inference_power = allocation.get("inference", 0) * 1000  # Convert to kW
+        inference_power = allocation.get("inference", 0)  # Already in kW
         cooling_kw, cooling_metrics = cooling_for_gpu_kW(inference_power)
         print(f"Cooling required: {cooling_kw:.2f} kW (COP: {cooling_metrics['cop']:.2f})")
         
