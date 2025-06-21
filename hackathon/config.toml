@@ -1,0 +1,9 @@
+# config.toml (template—DO NOT commit your real API key)
+api_key = "YOUR_API_KEY_HERE"
+site_power_kw = 0
+BATTERY_CAP_MWH = 1.0
+BATTERY_MAX_KW = 250.0
+SOC_MIN = 0.15
+SOC_MAX = 0.90
+BATTERY_EFF = 0.94
+LAMBDA_DEG = 0.0002 
