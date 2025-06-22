@@ -369,6 +369,7 @@ def get_inventory() -> Dict[str, Any]:
             "power_total": float(max_site_power_kw),
             "power_available": float(max(available_power, 0)),
             "power_used": float(actual_power_used),
+            "utilization_percentage": float(utilization * 100),  # Add utilization percentage
             "battery_soc": float(soc),
             "battery_capacity_mwh": config.get('BATTERY_CAP_MWH', 1.0),
             "battery_max_power_kw": config.get('BATTERY_MAX_KW', 250.0),
@@ -568,6 +569,7 @@ def _generate_fallback_inventory() -> Dict[str, Any]:
         "power_total": float(base_power),
         "power_available": float(power_available),
         "power_used": float(power_used),
+        "utilization_percentage": float(utilization * 100),  # Add utilization percentage
         "battery_soc": float(soc),
         "battery_capacity_mwh": config.get('BATTERY_CAP_MWH', 1.0),
         "battery_max_power_kw": config.get('BATTERY_MAX_KW', 250.0),
