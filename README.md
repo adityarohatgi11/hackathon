@@ -1,12 +1,14 @@
-# GridPilot: Advanced Energy Trading & Optimization Platform
-
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
+# [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen.svg)](tests/)
 [![API](https://img.shields.io/badge/API-MARA%20Hackathon%202025-orange.svg)](https://mara-hackathon-api.onrender.com)
+[![Demo](https://img.shields.io/badge/Demo-Loom-blueviolet?logo=loom)](https://www.loom.com/share/25d4038c47e94de4866c095ae6d5c4c9?sid=bf76da66-001d-4a0c-ba37-1a6ee619677b)
 
 A sophisticated energy trading and optimization platform that integrates real-time market data, advanced quantitative forecasting, and intelligent resource allocation for mining and compute operations.
 
+## 🔗 Demo Video
+
+[Click here to watch the demo on Loom](https://www.loom.com/share/25d4038c47e94de4866c095ae6d5c4c9?sid=bf76da66-001d-4a0c-ba37-1a6ee619677b)
 ## 📋 Table of Contents
 
 - [Overview](#overview)
