@@ -1022,237 +1022,416 @@ def main():
             """, unsafe_allow_html=True)
     
     with tab3:
-        st.markdown("# Performance Analytics")
+        st.markdown("# System Performance Analytics")
         st.markdown("")
         
-        create_performance_dashboard()
+        # System Metrics
+        col1, col2, col3, col4 = st.columns(4)
         
-        # Additional performance metrics
-        st.markdown("---")
-        st.markdown("### System Performance")
+        with col1:
+            st.metric("System Uptime", "99.8%", "0.2%")
         
-        performance_df = pd.DataFrame({
-            'Metric': ['Energy Efficiency', 'Cost Optimization', 'Revenue Generation', 'System Reliability'],
-            'Current': [92.5, 88.3, 94.1, 99.2],
-            'Target': [95.0, 90.0, 95.0, 99.5],
-            'Status': ['Good', 'Good', 'Excellent', 'Excellent']
+        with col2:
+            st.metric("Avg Response Time", "1.2s", "-0.3s")
+        
+        with col3:
+            st.metric("Energy Efficiency", "94.2%", "2.1%")
+        
+        with col4:
+            st.metric("Cost Optimization", "87.5%", "5.2%")
+        
+        # Performance Charts
+        st.markdown("### Performance Overview")
+        
+        # Create sample performance data
+        dates = pd.date_range(start='2024-01-01', periods=30, freq='D')
+        performance_data = pd.DataFrame({
+            'date': dates,
+            'efficiency': np.random.normal(94, 2, 30),
+            'cost_savings': np.random.normal(87, 3, 30),
+            'response_time': np.random.normal(1.2, 0.3, 30)
         })
         
-        st.dataframe(performance_df, use_container_width=True)
+        # Efficiency Chart
+        fig_efficiency = px.line(performance_data, x='date', y='efficiency', 
+                               title='System Efficiency Over Time')
+        fig_efficiency.update_layout(template='plotly_dark')
+        st.plotly_chart(fig_efficiency, use_container_width=True)
         
-        # Add AI analysis for performance metrics
+        # Cost Savings Chart
+        fig_cost = px.bar(performance_data, x='date', y='cost_savings', 
+                         title='Cost Optimization Performance')
+        fig_cost.update_layout(template='plotly_dark')
+        st.plotly_chart(fig_cost, use_container_width=True)
+        
+        # Response Time Chart
+        fig_response = px.scatter(performance_data, x='date', y='response_time', 
+                                title='System Response Time')
+        fig_response.update_layout(template='plotly_dark')
+        st.plotly_chart(fig_response, use_container_width=True)
+        
+        # Claude AI Analysis for Performance
         st.markdown("---")
-        if st.button("Analyze Performance Metrics", type="secondary"):
-            performance_summary = {
-                'Overall Score': f"{performance_df['Current'].mean():.1f}%",
-                'Best Performer': performance_df.loc[performance_df['Current'].idxmax(), 'Metric'],
-                'Improvement Area': performance_df.loc[performance_df['Current'].idxmin(), 'Metric'],
-                'Target Achievement': f"{(performance_df['Current'] >= performance_df['Target']).sum()}/4 metrics"
-            }
-            create_ai_explanation_button(llm_interface, performance_summary, "performance", "analysis")
+        st.markdown("### Claude AI Performance Analysis")
+        
+        performance_context = {
+            'system_uptime': '99.8%',
+            'avg_response_time': '1.2s',
+            'energy_efficiency': '94.2%',
+            'cost_optimization': '87.5%',
+            'efficiency_trend': 'stable with slight improvement',
+            'cost_trend': 'improving by 5.2%',
+            'response_trend': 'improving by 0.3s'
+        }
+        
+        performance_prompt = f"""Analyze the system performance metrics and provide insights:
+        
+        Performance Metrics:
+        - System Uptime: {performance_context['system_uptime']} (up 0.2%)
+        - Average Response Time: {performance_context['avg_response_time']} (improved by 0.3s)
+        - Energy Efficiency: {performance_context['energy_efficiency']} (up 2.1%)
+        - Cost Optimization: {performance_context['cost_optimization']} (up 5.2%)
+        
+        Provide 3 key insights about system performance and recommendations for improvement."""
+        
+        create_ai_explanation_button(llm_interface, performance_prompt, "performance", "main")
     
     with tab4:
-        if QLEARNING_AVAILABLE:
-            st.markdown("# Q-Learning Analytics")
-            st.markdown("")
+        st.markdown("# Q-Learning Agent Performance")
+        st.markdown("")
+        
+        # Q-Learning Controls
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.markdown("### Training Configuration")
+            episodes = st.slider("Training Episodes", 50, 500, 250)
+            learning_rate = st.slider("Learning Rate", 0.001, 0.1, 0.01, format="%.3f")
+            epsilon = st.slider("Exploration Rate", 0.01, 0.5, 0.1, format="%.2f")
+        
+        with col2:
+            st.markdown("### Quick Actions")
+            if st.button("Train Q-Learning Agent", type="primary"):
+                with st.spinner("Training Q-Learning agent..."):
+                    try:
+                        # Import and run Q-learning training
+                        from train_qlearning import run_qlearning_training
+                        results = run_qlearning_training(episodes=episodes)
+                        
+                        # Store results in session state
+                        st.session_state.qlearning_results = results
+                        st.success(f"Training completed! Best reward: {results.get('best_reward', 0):.2f}")
+                        
+                    except Exception as e:
+                        st.error(f"Training failed: {str(e)}")
+        
+        # Display Q-Learning Results
+        if 'qlearning_results' in st.session_state:
+            results = st.session_state.qlearning_results
             
-            # Q-learning controls
-            col1, col2 = st.columns(2)
+            # Metrics
+            col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                st.markdown("### Training Controls")
-                if st.button("Train Q-Learning Agent", type="primary"):
-                    with st.spinner("Training agent..."):
-                        try:
-                            # Create Q-learning system
-                            qlearning_system = create_advanced_qlearning_system()
-                            st.success("Training completed successfully")
-                            
-                            # Display training results
-                            training_data = {
-                                'Episodes': 100,
-                                'Best Reward': f"{np.random.uniform(25, 35):.2f}",
-                                'Average Reward': f"{np.random.uniform(18, 25):.2f}",
-                                'Convergence': 'Achieved'
-                            }
-                            
-                            for metric, value in training_data.items():
-                                st.metric(metric, value)
-                            
-                            # Add AI explanation button
-                            st.markdown("---")
-                            create_ai_explanation_button(llm_interface, training_data, "qlearning", "training")
-                                
-                        except Exception as e:
-                            st.error(f"Training failed: {e}")
+                st.metric("Best Reward", f"{results.get('best_reward', 0):.2f}")
             
             with col2:
-                st.markdown("### Configuration")
-                learning_rate = st.slider("Learning Rate", 0.001, 0.1, 0.01, format="%.3f")
-                epsilon = st.slider("Exploration Rate", 0.01, 0.5, 0.1, format="%.2f")
-                episodes = st.slider("Training Episodes", 50, 500, 100)
-                
-                st.markdown(f"""
-                **Current Settings:**
-                - Learning Rate: {learning_rate:.3f}
-                - Exploration: {epsilon:.2f}
-                - Episodes: {episodes}
-                """)
+                st.metric("Avg Reward", f"{results.get('avg_reward', 0):.2f}")
+            
+            with col3:
+                st.metric("Episodes", results.get('episodes', 0))
+            
+            with col4:
+                st.metric("Training Time", results.get('training_time', 'N/A'))
+            
+            # Training Progress Chart
+            if 'episode_rewards' in results:
+                fig_rewards = px.line(
+                    x=list(range(len(results['episode_rewards']))), 
+                    y=results['episode_rewards'],
+                    title='Q-Learning Training Progress',
+                    labels={'x': 'Episode', 'y': 'Reward'}
+                )
+                fig_rewards.update_layout(template='plotly_dark')
+                st.plotly_chart(fig_rewards, use_container_width=True)
+            
+            # Claude AI Analysis for Q-Learning
+            st.markdown("---")
+            st.markdown("### Claude AI Q-Learning Analysis")
+            
+            qlearning_prompt = f"""Analyze the Q-Learning training results and provide insights:
+            
+            Training Results:
+            - Best Reward: {results.get('best_reward', 0):.2f}
+            - Average Reward: {results.get('avg_reward', 0):.2f}
+            - Episodes Trained: {results.get('episodes', 0)}
+            - Training Time: {results.get('training_time', 'N/A')}
+            - Convergence: {'Good' if results.get('best_reward', 0) > 20 else 'Needs Improvement'}
+            
+            Provide 3 key insights about the Q-learning performance and recommendations for optimization."""
+            
+            create_ai_explanation_button(llm_interface, qlearning_prompt, "qlearning", "main")
+        
         else:
-            st.markdown("# Q-Learning Analytics")
-            st.markdown("")
-            st.info("Q-learning components are not available in this configuration.")
+            st.info("Train the Q-Learning agent to see results and analysis.")
     
     with tab5:
-        if STOCHASTIC_AVAILABLE:
-            st.markdown("# Stochastic Models")
-            st.markdown("")
+        st.markdown("# Advanced Stochastic Models")
+        st.markdown("")
+        
+        # Model Selection
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.markdown("### Model Configuration")
+            model_type = st.selectbox(
+                "Stochastic Model",
+                ["mean_reverting", "geometric_brownian", "jump_diffusion", "heston"]
+            )
             
-            # Stochastic model controls
-            col1, col2 = st.columns(2)
+            forecast_horizon = st.slider("Forecast Horizon (hours)", 24, 168, 72)
+            num_simulations = st.slider("Monte Carlo Simulations", 100, 1000, 500)
+        
+        with col2:
+            st.markdown("### Quick Actions")
+            if st.button("Run Stochastic Forecast", type="primary"):
+                with st.spinner("Running stochastic forecast..."):
+                    try:
+                        from forecasting.stochastic_models import StochasticForecaster
+                        
+                        # Get current price data
+                        current_prices = mara_client.get_prices()
+                        
+                        # Initialize forecaster
+                        forecaster = StochasticForecaster(model_type=model_type)
+                        
+                        # Generate forecast
+                        forecast_results = forecaster.forecast(
+                            current_prices, 
+                            horizon=forecast_horizon,
+                            n_simulations=num_simulations
+                        )
+                        
+                        # Store results
+                        st.session_state.stochastic_results = forecast_results
+                        st.success("Stochastic forecast completed!")
+                        
+                    except Exception as e:
+                        st.error(f"Forecast failed: {str(e)}")
+        
+        # Display Stochastic Results
+        if 'stochastic_results' in st.session_state:
+            results = st.session_state.stochastic_results
+            
+            # Risk Metrics
+            col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                st.markdown("### Model Configuration")
-                
-                sde_model = st.selectbox(
-                    "SDE Model Type",
-                    ["mean_reverting", "geometric_brownian", "jump_diffusion", "heston"]
-                )
-                
-                monte_carlo_sims = st.slider("Simulations", 1000, 10000, 5000)
-                forecast_horizon = st.slider("Horizon (hours)", 1, 48, 24)
-                
-                if st.button("Run Forecast", type="primary"):
-                    with st.spinner("Running forecast..."):
-                        try:
-                            # Create stochastic forecaster
-                            forecaster = create_stochastic_forecaster(sde_model)
-                            st.success("Forecast completed")
-                            
-                            # Display results
-                            forecast_results = {
-                                'Model': sde_model.replace('_', ' ').title(),
-                                'Simulations': f"{monte_carlo_sims:,}",
-                                'Horizon': f"{forecast_horizon}h",
-                                'Confidence': "95%",
-                                'Forecast Accuracy': f"{np.random.uniform(78, 92):.1f}%",
-                                'Prediction Error': f"{np.random.uniform(5, 15):.2f}%"
-                            }
-                            
-                            for metric, value in forecast_results.items():
-                                st.metric(metric, value)
-                            
-                            # Add AI explanation button
-                            st.markdown("---")
-                            create_ai_explanation_button(llm_interface, forecast_results, "stochastic", "forecast")
-                                
-                        except Exception as e:
-                            st.error(f"Forecast failed: {e}")
+                var_95 = results.get('var_95', 0)
+                st.metric("VaR (95%)", f"{var_95:.2f}%")
             
             with col2:
-                st.markdown("### Risk Metrics")
-                
-                # Risk metrics
-                risk_metrics = {
-                    'VaR (95%)': f"-{np.random.uniform(15, 25):.1f}%",
-                    'CVaR (95%)': f"-{np.random.uniform(20, 30):.1f}%",
-                    'Expected Return': f"{np.random.uniform(8, 15):.1f}%",
-                    'Volatility': f"{np.random.uniform(12, 20):.1f}%"
-                }
-                
-                for metric, value in risk_metrics.items():
-                    st.metric(metric, value)
-                
-                # Add AI explanation for risk metrics
-                if st.button("Analyze Risk Profile", key="risk_analysis"):
-                    create_ai_explanation_button(llm_interface, risk_metrics, "stochastic", "risk")
+                expected_return = results.get('expected_return', 0)
+                st.metric("Expected Return", f"{expected_return:.2f}%")
+            
+            with col3:
+                volatility = results.get('volatility', 0)
+                st.metric("Volatility", f"{volatility:.2f}%")
+            
+            with col4:
+                sharpe_ratio = results.get('sharpe_ratio', 0)
+                st.metric("Sharpe Ratio", f"{sharpe_ratio:.2f}")
+            
+            # Forecast Visualization
+            if 'forecast_paths' in results:
+                fig_paths = px.line(
+                    results['forecast_paths'],
+                    title=f'Stochastic Price Forecast - {model_type.title()} Model'
+                )
+                fig_paths.update_layout(template='plotly_dark')
+                st.plotly_chart(fig_paths, use_container_width=True)
+            
+            # Claude AI Analysis for Stochastic Models
+            st.markdown("---")
+            st.markdown("### Claude AI Stochastic Analysis")
+            
+            stochastic_prompt = f"""Analyze the stochastic modeling results and provide insights:
+            
+            Stochastic Model Results:
+            - Model Type: {model_type.title()}
+            - Forecast Horizon: {forecast_horizon} hours
+            - Monte Carlo Simulations: {num_simulations}
+            - VaR (95%): {results.get('var_95', 0):.2f}%
+            - Expected Return: {results.get('expected_return', 0):.2f}%
+            - Volatility: {results.get('volatility', 0):.2f}%
+            - Sharpe Ratio: {results.get('sharpe_ratio', 0):.2f}
+            
+            Provide 3 key insights about the stochastic forecast and risk assessment."""
+            
+            create_ai_explanation_button(llm_interface, stochastic_prompt, "stochastic", "main")
+        
         else:
-            st.markdown("# Stochastic Models")
-            st.markdown("")
-            st.info("Stochastic modeling components are not available in this configuration.")
+            st.info("Run a stochastic forecast to see results and analysis.")
     
     with tab6:
-        if ADVANCED_GAME_THEORY_AVAILABLE:
-            st.markdown("# Game Theory & Auctions")
-            st.markdown("")
+        st.markdown("# Advanced Game Theory & Auctions")
+        st.markdown("")
+        
+        # Game Theory Controls
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.markdown("### Auction Configuration")
+            auction_type = st.selectbox(
+                "Auction Mechanism",
+                ["second_price", "first_price", "vcg", "combinatorial"]
+            )
             
-            # Game theory controls
-            col1, col2 = st.columns(2)
+            num_bidders = st.slider("Number of Bidders", 3, 10, 5)
+            reserve_price = st.slider("Reserve Price", 0.01, 0.20, 0.05, format="%.3f")
+        
+        with col2:
+            st.markdown("### Quick Actions")
+            if st.button("Run Advanced Auction", type="primary"):
+                with st.spinner("Running auction simulation..."):
+                    try:
+                        from game_theory.advanced_game_theory import AdvancedGameTheory
+                        
+                        # Initialize game theory system
+                        game_system = AdvancedGameTheory()
+                        
+                        # Run auction
+                        auction_results = game_system.run_auction(
+                            auction_type=auction_type,
+                            num_bidders=num_bidders,
+                            reserve_price=reserve_price
+                        )
+                        
+                        # Store results
+                        st.session_state.auction_results = auction_results
+                        st.success("Auction simulation completed!")
+                        
+                    except Exception as e:
+                        st.error(f"Auction failed: {str(e)}")
+            
+            if st.button("Run MPC Optimization"):
+                with st.spinner("Running MPC optimization..."):
+                    try:
+                        from game_theory.mpc_controller import MPCController
+                        
+                        # Initialize MPC
+                        mpc = MPCController()
+                        
+                        # Get current data
+                        current_prices = mara_client.get_prices()
+                        
+                        # Run optimization
+                        mpc_results = mpc.optimize(current_prices)
+                        
+                        # Store results
+                        st.session_state.mpc_results = mpc_results
+                        st.success("MPC optimization completed!")
+                        
+                    except Exception as e:
+                        st.error(f"MPC optimization failed: {str(e)}")
+        
+        # Display Auction Results
+        if 'auction_results' in st.session_state:
+            results = st.session_state.auction_results
+            
+            st.markdown("### Auction Results")
+            
+            # Auction Metrics
+            col1, col2, col3, col4 = st.columns(4)
             
             with col1:
-                st.markdown("### Auction Configuration")
-                
-                auction_type = st.selectbox(
-                    "Auction Type",
-                    ["second_price", "first_price", "vcg", "combinatorial"]
-                )
-                
-                num_bidders = st.slider("Bidders", 2, 20, 10)
-                auction_rounds = st.slider("Rounds", 1, 10, 5)
-                
-                if st.button("Run Auction", type="primary"):
-                    with st.spinner("Running auction..."):
-                        try:
-                            # Create auction mechanism
-                            auction = create_advanced_auction(auction_type)
-                            st.success("Auction completed")
-                            
-                            # Display results
-                            auction_results = {
-                                'Auction Type': auction_type.replace('_', ' ').title(),
-                                'Winning Price': f"${np.random.uniform(300, 400):.2f}",
-                                'Second Price': f"${np.random.uniform(250, 350):.2f}",
-                                'Efficiency': f"{np.random.uniform(85, 95):.1f}%",
-                                'Revenue': f"${np.random.uniform(1000, 2000):.2f}",
-                                'Bidders': num_bidders,
-                                'Rounds': auction_rounds
-                            }
-                            
-                            for metric, value in auction_results.items():
-                                st.metric(metric, value)
-                            
-                            # Add AI explanation button
-                            st.markdown("---")
-                            create_ai_explanation_button(llm_interface, auction_results, "auction", "results")
-                                
-                        except Exception as e:
-                            st.error(f"Auction failed: {e}")
+                st.metric("Winning Bid", f"${results.get('winning_bid', 0):.3f}")
             
             with col2:
-                st.markdown("### Model Predictive Control")
-                
-                mpc_horizon = st.slider("MPC Horizon", 12, 48, 24)
-                degradation_weight = st.slider("Degradation Weight", 0.0, 1.0, 0.5)
-                
-                if st.button("Run MPC", type="primary"):
-                    with st.spinner("Optimizing..."):
-                        try:
-                            st.success("Optimization completed")
-                            
-                            # Display MPC results
-                            mpc_results = {
-                                'Horizon': f"{mpc_horizon}h",
-                                'Degradation Weight': f"{degradation_weight:.2f}",
-                                'Optimal Energy': f"{np.random.uniform(1000, 1500):.1f} kWh",
-                                'Peak Power': f"{np.random.uniform(600, 800):.1f} kW",
-                                'Cost Reduction': f"{np.random.uniform(10, 20):.1f}%",
-                                'Strategy': "Optimized",
-                                'Efficiency Gain': f"{np.random.uniform(5, 15):.1f}%"
-                            }
-                            
-                            for metric, value in mpc_results.items():
-                                st.metric(metric, value)
-                            
-                            # Add AI explanation button
-                            st.markdown("---")
-                            create_ai_explanation_button(llm_interface, mpc_results, "mpc", "optimization")
-                                
-                        except Exception as e:
-                            st.error(f"Optimization failed: {e}")
-        else:
-            st.markdown("# Game Theory & Auctions")
-            st.markdown("")
-            st.info("Game theory components are not available in this configuration.")
+                st.metric("Revenue", f"${results.get('revenue', 0):.2f}")
+            
+            with col3:
+                st.metric("Efficiency", f"{results.get('efficiency', 0):.1f}%")
+            
+            with col4:
+                st.metric("Bidders", results.get('num_bidders', 0))
+            
+            # Bid Distribution
+            if 'bid_data' in results:
+                fig_bids = px.bar(
+                    results['bid_data'],
+                    title='Auction Bid Distribution'
+                )
+                fig_bids.update_layout(template='plotly_dark')
+                st.plotly_chart(fig_bids, use_container_width=True)
+            
+            # Claude AI Analysis for Auction Results
+            st.markdown("---")
+            st.markdown("### Claude AI Auction Analysis")
+            
+            auction_prompt = f"""Analyze the auction results and provide insights:
+            
+            Auction Results:
+            - Auction Type: {auction_type.title()}
+            - Number of Bidders: {num_bidders}
+            - Reserve Price: ${reserve_price:.3f}
+            - Winning Bid: ${results.get('winning_bid', 0):.3f}
+            - Total Revenue: ${results.get('revenue', 0):.2f}
+            - Auction Efficiency: {results.get('efficiency', 0):.1f}%
+            
+            Provide 3 key insights about the auction performance and strategic recommendations."""
+            
+            create_ai_explanation_button(llm_interface, auction_prompt, "auction", "main")
+        
+        # Display MPC Results
+        if 'mpc_results' in st.session_state:
+            results = st.session_state.mpc_results
+            
+            st.markdown("### MPC Optimization Results")
+            
+            # MPC Metrics
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                st.metric("Cost Reduction", f"{results.get('cost_reduction', 0):.1f}%")
+            
+            with col2:
+                st.metric("Optimal Horizon", f"{results.get('horizon', 0)} hrs")
+            
+            with col3:
+                st.metric("Convergence", results.get('convergence', 'Unknown'))
+            
+            with col4:
+                st.metric("Iterations", results.get('iterations', 0))
+            
+            # Control Actions
+            if 'control_actions' in results:
+                fig_control = px.line(
+                    results['control_actions'],
+                    title='MPC Control Actions'
+                )
+                fig_control.update_layout(template='plotly_dark')
+                st.plotly_chart(fig_control, use_container_width=True)
+            
+            # Claude AI Analysis for MPC Results
+            st.markdown("---")
+            st.markdown("### Claude AI MPC Analysis")
+            
+            mpc_prompt = f"""Analyze the MPC optimization results and provide insights:
+            
+            MPC Results:
+            - Cost Reduction: {results.get('cost_reduction', 0):.1f}%
+            - Optimization Horizon: {results.get('horizon', 0)} hours
+            - Convergence Status: {results.get('convergence', 'Unknown')}
+            - Iterations: {results.get('iterations', 0)}
+            - Control Strategy: {results.get('strategy', 'Adaptive')}
+            
+            Provide 3 key insights about the MPC performance and optimization recommendations."""
+            
+            create_ai_explanation_button(llm_interface, mpc_prompt, "mpc", "main")
+        
+        if 'auction_results' not in st.session_state and 'mpc_results' not in st.session_state:
+            st.info("Run auction or MPC optimization to see results and analysis.")
 
 if __name__ == "__main__":
     main()
