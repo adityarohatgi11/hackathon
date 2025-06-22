@@ -13,6 +13,7 @@ A sophisticated energy trading and optimization platform that integrates real-ti
 - [Features](#features)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
+- [Demo & Interactive Features](#-demo--interactive-features)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Usage](#usage)
@@ -122,6 +123,146 @@ python test_mara_api.py
 ```bash
 python main.py
 ```
+
+## 🎮 Demo & Interactive Features
+
+### 🚀 Running the Demo
+
+GridPilot includes a comprehensive interactive dashboard that demonstrates all system capabilities. Here's how to get started:
+
+#### 1. Launch the Dashboard
+```bash
+# Navigate to the hackathon directory
+cd hackathon
+
+# Start the Streamlit dashboard
+streamlit run ui/dashboard.py
+```
+
+The dashboard will open automatically in your browser at `http://localhost:8501`
+
+#### 2. Dashboard Overview
+
+The demo dashboard features four main tabs:
+
+**📊 Overview Tab**
+- Real-time energy consumption and price charts
+- System metrics and performance indicators
+- Optimization results display
+- Quick statistics and efficiency scores
+
+**💬 Chat Assistant Tab**
+- Interactive AI assistant powered by Claude
+- Ask questions about energy management
+- Get real-time advice on optimization strategies
+- Natural language explanations of system decisions
+
+**🤖 AI Insights Tab**
+- Auto-generated insights from energy data
+- Decision explanations with context
+- Market analysis and recommendations
+- Performance optimization suggestions
+
+**⚙️ System Status Tab**
+- Real-time system health monitoring
+- Power utilization metrics
+- Temperature and cooling status
+- Active alerts and system events
+
+### 🎯 Key Demo Features
+
+#### Real-Time Data Integration
+- **Live MARA API Data**: Real-time energy, hash, and token prices
+- **Automatic Fallback**: Seamless transition to synthetic data when API unavailable
+- **Data Visualization**: Interactive charts showing 24-hour trends
+
+#### Advanced Optimization Demo
+1. **Click "🚀 Run Optimization"** in the sidebar
+2. **Watch Real-Time Processing**: See the system analyze market conditions
+3. **View Results**: Check allocation decisions and performance metrics
+4. **Understand Decisions**: Use the AI assistant to explain optimization choices
+
+#### Interactive AI Assistant
+- **Ask Questions**: "How should I optimize my power allocation?"
+- **Get Insights**: "What's causing the current price volatility?"
+- **Request Explanations**: "Why did the system choose this allocation?"
+
+#### System Monitoring
+- **Real-Time Metrics**: Battery SOC, power utilization, temperature
+- **Performance Tracking**: Efficiency scores and optimization results
+- **Alert System**: Active warnings and system status updates
+
+### 🎮 Demo Scenarios
+
+#### Scenario 1: Basic System Exploration
+1. Open the dashboard
+2. Navigate through all four tabs
+3. Observe real-time data updates
+4. Try the chat assistant with basic questions
+
+#### Scenario 2: Optimization Demonstration
+1. Go to the Overview tab
+2. Click "🚀 Run Optimization" in the sidebar
+3. Watch the optimization process
+4. Review the results in the "Enhanced GridPilot Optimization Results" section
+5. Ask the AI assistant to explain the decisions
+
+#### Scenario 3: AI-Powered Analysis
+1. Navigate to the AI Insights tab
+2. Let the system generate insights automatically
+3. Ask specific questions in the Chat Assistant tab
+4. Request decision explanations for optimization results
+
+#### Scenario 4: System Monitoring
+1. Go to the System Status tab
+2. Monitor real-time system health
+3. Check power utilization and efficiency metrics
+4. Review system events and alerts
+
+### 🔧 Demo Configuration
+
+#### API Integration (Optional)
+For full demo experience with real data:
+```bash
+# Set up MARA API credentials
+export MARA_API_KEY="your_api_key_here"
+export SITE_NAME="DemoSite"
+export SITE_POWER_KW="1000000"
+```
+
+#### Demo Mode (Default)
+The system runs in demo mode by default with:
+- Synthetic market data
+- Simulated optimization results
+- Mock AI responses (if Claude API unavailable)
+- Full dashboard functionality
+
+### 📊 Demo Data Sources
+
+The demo uses multiple data sources:
+- **Real MARA API**: When available and configured
+- **Synthetic Data**: Fallback with realistic market patterns
+- **Simulated Optimization**: Advanced stochastic models
+- **Mock AI Responses**: When Claude API unavailable
+
+### 🎯 Demo Learning Objectives
+
+After running the demo, you should understand:
+- **Real-time Energy Trading**: How the system optimizes power allocation
+- **Advanced Forecasting**: Multi-model ensemble predictions
+- **AI-Powered Decision Making**: How LLM integration enhances optimization
+- **System Architecture**: Four-lane development structure
+- **Market Integration**: MARA API connectivity and fallback mechanisms
+
+### 🚀 Next Steps After Demo
+
+1. **Explore the Code**: Review the implementation in `hackathon/` directory
+2. **Run Tests**: Execute `pytest tests/ -v` to see system validation
+3. **Customize Configuration**: Modify `config.toml` for your use case
+4. **Extend Functionality**: Add new forecasting models or optimization strategies
+5. **Deploy**: Use the system for real energy trading operations
+
+---
 
 ## 📦 Installation
 
