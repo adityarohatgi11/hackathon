@@ -247,59 +247,102 @@ The predictive controller demonstrates {control_quality} performance with {track
 • Computational efficiency: {computation_time}ms per cycle
 • Model prediction accuracy: {prediction_accuracy}%
 
-**Implementation Strategy:**
-1. Deploy hierarchical control architecture
-2. Implement distributed optimization for scalability  
-3. Add machine learning for parameter adaptation
-4. Develop fault-tolerant control mechanisms"""
+**Strategic Recommendations:**
+1. Implement model-plant mismatch detection
+2. Add robust optimization for uncertainty handling
+3. Develop adaptive control strategies
+4. Integrate machine learning for parameter tuning"""
             ],
             
             'performance': [
                 """**System Performance Analysis**
 
 **Overall Assessment:**
-System performance shows {overall_score}% efficiency with {performance_trend} trends across key metrics.
-
-**Performance Breakdown:**
-• Energy Efficiency: {energy_efficiency} - {efficiency_assessment}
-• Cost Optimization: {cost_optimization} - {cost_assessment}
-• Revenue Generation: {revenue_generation} - {revenue_assessment}
-• System Reliability: {reliability_score} - {reliability_assessment}
-
-**Bottleneck Analysis:**
-Primary constraint identified: {primary_bottleneck}
-Secondary optimization opportunity: {secondary_opportunity}
-
-**Improvement Roadmap:**
-1. Address {improvement_area} through {improvement_method}
-2. Implement {optimization_strategy} for {target_metric}
-3. Deploy {monitoring_solution} for continuous optimization
-4. Establish {benchmark_framework} for performance tracking
-
-**ROI Projections:**
-Proposed improvements could yield {roi_projection}% return within {payback_period} months.""",
-
-                """**Comprehensive Performance Intelligence**
-
-**Operational Excellence:**
-Current performance index: {performance_index} with {benchmark_comparison} against industry benchmarks.
+Current system performance achieves {overall_score}% efficiency with {performance_trend} operational trends. The energy management system demonstrates {efficiency_assessment} performance across key metrics.
 
 **Key Performance Indicators:**
-• Availability: {availability}%
-• Efficiency: {efficiency_score}%  
-• Cost per kWh: ${cost_per_kwh}
-• Revenue per MW: ${revenue_per_mw}
+• Energy Efficiency: {energy_efficiency}
+• Cost Optimization: {cost_optimization}
+• Revenue Generation: {revenue_generation}
+• System Reliability: {reliability_score}
 
-**Predictive Insights:**
-• Performance trajectory: {trajectory_analysis}
-• Maintenance requirements: {maintenance_forecast}
-• Capacity optimization: {capacity_insights}
+**Performance Analysis:**
+• Efficiency Assessment: {efficiency_assessment}
+• Cost Management: {cost_assessment}
+• Revenue Performance: {revenue_assessment}
+• Reliability Status: {reliability_assessment}
+
+**Optimization Opportunities:**
+• Primary Focus: {primary_bottleneck} optimization
+• Secondary Opportunity: {secondary_opportunity} enhancement
+• Improvement Strategy: {optimization_strategy} implementation
+
+**Financial Impact:**
+• ROI Projection: {roi_projection}% annual return
+• Payback Period: {payback_period} months
+• Performance Index: {performance_index}
 
 **Strategic Recommendations:**
-1. Implement predictive maintenance protocols
-2. Optimize asset utilization through advanced scheduling
-3. Deploy real-time performance monitoring
-4. Establish continuous improvement frameworks"""
+1. Target {improvement_area} through {improvement_method}
+2. Implement {monitoring_solution} for enhanced visibility
+3. Establish {benchmark_framework} for continuous improvement
+4. Focus on {target_metric} optimization for maximum impact"""
+            ],
+            
+            'general': [
+                """**Energy Management Analysis**
+
+**Current System Status:**
+The energy management system demonstrates {performance_level} operational characteristics with {trend_direction} performance trends. Overall system efficiency maintains {confidence_level} reliability levels.
+
+**Key Insights:**
+• System performance indicators show {performance_trend} patterns
+• Energy utilization efficiency remains within optimal parameters
+• Cost optimization strategies are delivering expected results
+• Risk management protocols are functioning effectively
+
+**Strategic Recommendations:**
+1. Continue monitoring key performance indicators for optimization opportunities
+2. Implement predictive analytics for enhanced decision-making capabilities
+3. Consider advanced automation for improved operational efficiency
+4. Develop comprehensive reporting dashboards for stakeholder visibility
+
+**Market Analysis:**
+Current energy market conditions suggest {trend_direction} pricing trends with moderate volatility. Recommended strategies include demand response optimization and strategic energy procurement timing.
+
+**Next Steps:**
+1. Conduct detailed performance review with operational teams
+2. Implement enhanced monitoring and alerting systems
+3. Develop long-term optimization roadmap
+4. Schedule regular system health assessments
+
+**Business Impact:**
+The analysis indicates potential for 10-15% efficiency improvements through targeted optimization strategies and enhanced monitoring capabilities.""",
+
+                """**Comprehensive Energy Insights**
+
+**Executive Summary:**
+Energy management operations demonstrate solid performance with identifiable optimization opportunities. Current systems maintain {performance_level} efficiency levels with {trend_direction} operational trends.
+
+**Operational Excellence:**
+• System reliability maintains industry-leading standards
+• Energy efficiency metrics exceed baseline expectations
+• Cost management strategies deliver consistent results
+• Risk mitigation protocols provide adequate protection
+
+**Strategic Opportunities:**
+1. Advanced analytics implementation for predictive insights
+2. Machine learning integration for automated optimization
+3. Real-time monitoring enhancement for proactive management
+4. Stakeholder dashboard development for improved visibility
+
+**Financial Performance:**
+Current operations demonstrate strong financial performance with opportunities for 12-18% efficiency improvements through strategic optimization initiatives.
+
+**Innovation Roadmap:**
+Phase 1: Enhanced monitoring and analytics (3 months)
+Phase 2: Automation and optimization (6 months)  
+Phase 3: Advanced AI integration (12 months)"""
             ]
         }
     
@@ -405,7 +448,9 @@ Current performance index: {performance_index} with {benchmark_comparison} again
                 'error_bounds': f"±{random.uniform(3, 8):.1f}%",
                 'reversion_strength': random.choice(['strong', 'moderate', 'weak']),
                 'jump_probability': f"{random.uniform(0.1, 0.3):.2f}",
-                'clustering_pattern': random.choice(['significant', 'moderate', 'minimal'])
+                'clustering_pattern': random.choice(['significant', 'moderate', 'minimal']),
+                'execution_timing': random.choice(['immediate', 'delayed', 'scheduled']),
+                'position_sizing': random.choice(['conservative', 'moderate', 'aggressive'])
             })
         
         elif analysis_type == 'auction':
@@ -488,6 +533,21 @@ Current performance index: {performance_index} with {benchmark_comparison} again
                 'trajectory_analysis': random.choice(['positive', 'stable', 'improving']),
                 'maintenance_forecast': random.choice(['on schedule', 'optimized', 'predictive']),
                 'capacity_insights': random.choice(['well-utilized', 'optimization potential', 'balanced'])
+            })
+        
+        # For general analysis type, use performance values as baseline
+        elif analysis_type == 'general':
+            base_values.update({
+                'overall_score': f"{random.uniform(85, 95):.1f}",
+                'performance_trend': random.choice(['improving', 'stable', 'mixed']),
+                'energy_efficiency': f"{random.uniform(88, 95):.1f}%",
+                'cost_optimization': f"{random.uniform(85, 92):.1f}%",
+                'revenue_generation': f"{random.uniform(90, 97):.1f}%",
+                'reliability_score': f"{random.uniform(98, 99.5):.1f}%",
+                'efficiency_assessment': random.choice(['excellent', 'strong', 'good']),
+                'cost_assessment': random.choice(['optimized', 'efficient', 'acceptable']),
+                'revenue_assessment': random.choice(['outstanding', 'strong', 'satisfactory']),
+                'reliability_assessment': random.choice(['exceptional', 'excellent', 'very good'])
             })
         
         return base_values

@@ -113,12 +113,13 @@ class ClaudeInterface:
             logger.error(f"Error processing query with Claude: {e}")
             return f"Sorry, I encountered an error: {str(e)}"
     
-    def generate_insights(self, data: pd.DataFrame) -> str:
+    def generate_insights(self, data: pd.DataFrame, context: Optional[Dict[str, Any]] = None) -> str:
         """
         Generate insights from energy data.
         
         Args:
             data: DataFrame containing energy consumption, prices, etc.
+            context: Optional context information for the analysis
             
         Returns:
             Generated insights about the energy data
@@ -127,6 +128,10 @@ class ClaudeInterface:
             return "Claude API not available for insights generation."
         
         try:
+            # Handle string prompts directly
+            if isinstance(data, str):
+                return self.process_query(data)
+            
             # Create a summary of the data using plain text
             total_consumption = data['consumption'].sum()
             avg_consumption = data['consumption'].mean()
@@ -145,6 +150,11 @@ class ClaudeInterface:
             - Price range: {min_price:.3f} to {max_price:.3f} dollars per kilowatt hour
             - Current battery state of charge: {current_soc:.1%}
             """
+            
+            # Add context information if provided
+            if context:
+                context_str = "\n".join([f"- {key}: {value}" for key, value in context.items()])
+                data_summary += f"\n\nAdditional Context:\n{context_str}"
             
             query = f"Briefly analyze this energy data and provide 2-3 key insights in plain text only: {data_summary}"
             
