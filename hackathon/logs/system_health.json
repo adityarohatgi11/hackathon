@@ -1,0 +1,15 @@
+{
+  "timestamp": 1750718289.519249,
+  "overall_status": "healthy",
+  "issues": [],
+  "agent_health": {},
+  "system_resources": {
+    "total_mb": 8192.0,
+    "available_mb": 1260.453125,
+    "percent_used": 84.6
+  },
+  "message_bus": {
+    "status": "healthy",
+    "type": "in_memory"
+  }
+}

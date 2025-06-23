@@ -1,0 +1,16 @@
+{
+  "timestamp": 1750718289.762864,
+  "system_uptime": 0.24384403228759766,
+  "agents_running": 0,
+  "agent_status": {},
+  "restart_counts": {},
+  "memory_usage": {
+    "total_mb": 8192.0,
+    "available_mb": 1254.953125,
+    "percent_used": 84.7
+  },
+  "message_bus_status": {
+    "status": "healthy",
+    "type": "in_memory"
+  }
+}
