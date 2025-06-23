@@ -1,0 +1,33 @@
+============================================================
+GridPilot-GT Agent System Test Report
+============================================================
+Test Start: 2025-06-23T11:48:46.524891
+Test End: 2025-06-23T11:49:14.424909
+Total Duration: 27.90 seconds
+
+Overall Status: ✅ PASS
+
+Message Bus: ✅ PASS
+Data Agent: ✅ PASS
+
+Individual Agent Tests:
+  ForecasterAgent: ✅ PASS
+  StrategyAgent: ✅ PASS
+  LocalLLMAgent: ✅ PASS
+  VectorStoreAgent: ✅ PASS
+
+End-to-End Flow: ✅ PASS
+
+Performance Metrics:
+  forecaster_24h: 0.134s
+  forecaster_48h: 0.001s
+  forecaster_168h: 0.001s
+
+Error Handling Tests:
+  ForecasterAgent: ✅ PASS
+  StrategyAgent: ✅ PASS
+  LocalLLMAgent: ✅ PASS
+  VectorStoreAgent: ✅ PASS
+
+Test Summary: 11/11 tests passed
+============================================================
