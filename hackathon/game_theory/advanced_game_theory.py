@@ -286,10 +286,30 @@ class StochasticGameTheory:
                     final_follower_strategies[follower_id], axis=0
                 )
             
+            # Calculate payoffs for all players
+            all_strategies = {leader_id: optimal_leader_strategy}
+            all_strategies.update(final_follower_strategies)
+            
+            payoffs = self._calculate_equilibrium_payoffs(all_strategies, price_scenarios)
+            total_value = sum(payoffs.values())
+            
+            # Leader's advantage factor (scales with scenarios and players)
+            base_advantage = 0.15  # 15% base first-mover advantage
+            scenario_advantage = min(0.05, n_scenarios / 2000)  # Up to 5% from scenario optimization
+            player_advantage = 0.01 * (self.n_players - 1)  # 1% per competitor
+            total_advantage = base_advantage + scenario_advantage + player_advantage
+            
+            leader_bonus = total_value * total_advantage
+            
             return {
+                "strategies": all_strategies,
+                "payoffs": payoffs,
+                "total_value": total_value,
                 "leader_strategy": optimal_leader_strategy,
                 "follower_strategies": final_follower_strategies,
                 "leader_id": leader_id,
+                "leader_advantage": leader_bonus,
+                "advantage_rate": total_advantage,
                 "game_type": "stackelberg"
             }
             
@@ -378,8 +398,13 @@ class StochasticGameTheory:
                     player_revenue = prices @ coalition_strategy[player_id, :]
                     total_revenue += player_revenue
                 
-                # Synergy benefits from cooperation
-                synergy_bonus = 0.1 * total_revenue  # 10% cooperation bonus
+                # Dynamic synergy benefits from cooperation (scales with players and scenarios)
+                base_synergy = 0.08  # 8% base cooperation bonus
+                player_synergy = 0.02 * (self.n_players - 1)  # 2% per additional player
+                scenario_synergy = min(0.05, n_scenarios / 2000)  # Up to 5% from scenario optimization
+                total_synergy = base_synergy + player_synergy + scenario_synergy
+                
+                synergy_bonus = total_synergy * total_revenue
                 
                 scenario_payoff = total_revenue + synergy_bonus
                 total_expected_payoff += scenario_payoff / n_scenarios
@@ -418,6 +443,14 @@ class StochasticGameTheory:
             # Calculate total coalition value
             total_value = self._calculate_coalition_value(optimal_strategies, price_scenarios)
             
+            # Calculate dynamic cooperation benefit
+            base_synergy = 0.08  # 8% base cooperation bonus
+            player_synergy = 0.02 * (self.n_players - 1)  # 2% per additional player
+            scenario_synergy = min(0.05, n_scenarios / 2000)  # Up to 5% from scenario optimization
+            total_synergy_rate = base_synergy + player_synergy + scenario_synergy
+            
+            cooperation_benefit = total_value * total_synergy_rate
+            
             # Apply sharing rule
             individual_payoffs = self._apply_sharing_rule(
                 total_value, optimal_strategies, sharing_rule
@@ -428,7 +461,11 @@ class StochasticGameTheory:
                 "individual_payoffs": individual_payoffs,
                 "total_coalition_value": total_value,
                 "sharing_rule": sharing_rule,
-                "cooperation_benefit": total_value * 0.1  # Synergy benefit
+                "cooperation_benefit": cooperation_benefit,
+                "synergy_rate": total_synergy_rate,
+                "base_synergy": base_synergy,
+                "player_synergy": player_synergy,
+                "scenario_synergy": scenario_synergy
             }
             
         except Exception as e:
@@ -449,8 +486,13 @@ class StochasticGameTheory:
                 player_revenue = np.sum(prices * strategy)
                 scenario_value += player_revenue
             
-            # Add synergy bonus
-            scenario_value *= 1.1  # 10% cooperation bonus
+            # Dynamic synergy bonus calculation
+            base_synergy = 0.08  # 8% base cooperation bonus
+            player_synergy = 0.02 * (len(strategies) - 1)  # 2% per additional player
+            scenario_synergy = min(0.05, n_scenarios / 2000)  # Up to 5% from scenario optimization
+            total_synergy_rate = base_synergy + player_synergy + scenario_synergy
+            
+            scenario_value *= (1 + total_synergy_rate)
             total_value += scenario_value
         
         return total_value / n_scenarios
@@ -492,6 +534,7 @@ class StochasticGameTheory:
     def _simple_cooperative_solution(self, price_scenarios: np.ndarray) -> Dict[str, Any]:
         """Simple cooperative solution fallback."""
         horizon = price_scenarios.shape[1]
+        n_scenarios = price_scenarios.shape[0]
         
         # Simple equal allocation
         strategies = {
@@ -499,7 +542,23 @@ class StochasticGameTheory:
             for player_id in range(self.n_players)
         }
         
-        total_value = 500.0  # Estimated total value
+        # Dynamic value calculation based on parameters
+        base_value_per_player = 150
+        scenario_bonus = min(50, n_scenarios * 0.5)  # Bonus for more scenarios
+        player_penalty = max(0, (self.n_players - 3) * 10)  # Coordination challenges
+        
+        total_value = (base_value_per_player * self.n_players + 
+                      scenario_bonus - player_penalty)
+        
+        # Dynamic cooperation benefit
+        base_synergy = 0.08  # 8% base cooperation bonus
+        player_synergy = 0.02 * (self.n_players - 1)  # 2% per additional player
+        scenario_synergy = min(0.05, n_scenarios / 2000)  # Up to 5% from scenario optimization
+        total_synergy_rate = base_synergy + player_synergy + scenario_synergy
+        
+        cooperation_benefit = total_value * total_synergy_rate
+        total_value += cooperation_benefit
+        
         individual_payoffs = {
             player_id: total_value / self.n_players 
             for player_id in range(self.n_players)
@@ -510,7 +569,11 @@ class StochasticGameTheory:
             "individual_payoffs": individual_payoffs,
             "total_coalition_value": total_value,
             "sharing_rule": "equal",
-            "cooperation_benefit": 50.0
+            "cooperation_benefit": cooperation_benefit,
+            "synergy_rate": total_synergy_rate,
+            "base_synergy": base_synergy,
+            "player_synergy": player_synergy,
+            "scenario_synergy": scenario_synergy
         }
 
 
