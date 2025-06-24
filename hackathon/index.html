@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Agent System - Dashboard Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 800px;
+            padding: 2rem;
+        }
+        
+        .header {
+            margin-bottom: 3rem;
+        }
+        
+        .title {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .dashboard-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: white;
+            display: block;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .dashboard-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        
+        .dashboard-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .dashboard-description {
+            font-size: 1rem;
+            opacity: 0.9;
+            line-height: 1.4;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-online {
+            background-color: #22c55e;
+            box-shadow: 0 0 10px #22c55e;
+        }
+        
+        .status-offline {
+            background-color: #ef4444;
+        }
+        
+        .footer {
+            margin-top: 2rem;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        
+        .demo-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .feature-list {
+            list-style: none;
+            text-align: left;
+            display: inline-block;
+        }
+        
+        .feature-list li {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        
+        .feature-list li:before {
+            content: "✅";
+            position: absolute;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">🚀 Enhanced Agent System</div>
+            <div class="subtitle">Intelligent Trading Agents with Real-Time Monitoring</div>
+        </div>
+        
+        <div class="demo-section">
+            <h3>🎉 System Successfully Deployed!</h3>
+            <p>The Enhanced Agent System is now running with multiple dashboard interfaces:</p>
+            <ul class="feature-list">
+                <li>Robust error handling with circuit breakers</li>
+                <li>Intelligent caching with TTL management</li>
+                <li>Minimal API dependencies (synthetic data fallback)</li>
+                <li>Real-time strategy optimization</li>
+                <li>Health monitoring and metrics tracking</li>
+                <li>Beautiful modern web interfaces</li>
+            </ul>
+        </div>
+        
+        <div class="dashboard-grid">
+            <a href="http://localhost:8502" class="dashboard-card" target="_blank">
+                <div class="dashboard-icon">🚀</div>
+                <div class="dashboard-title">
+                    <span class="status-indicator status-online"></span>
+                    Enhanced Agent Dashboard
+                </div>
+                <div class="dashboard-description">
+                    Modern, comprehensive dashboard with real-time monitoring, live demos, and interactive analytics for the enhanced agent system.
+                </div>
+            </a>
+            
+            <a href="http://localhost:8503" class="dashboard-card" target="_blank">
+                <div class="dashboard-icon">🔗</div>
+                <div class="dashboard-title">
+                    <span class="status-indicator status-online"></span>
+                    Integration Dashboard
+                </div>
+                <div class="dashboard-description">
+                    Specialized integration interface showcasing enhanced agent capabilities with real-time data generation and strategy recommendations.
+                </div>
+            </a>
+            
+            <a href="http://localhost:8501" class="dashboard-card" target="_blank">
+                <div class="dashboard-icon">⚡</div>
+                <div class="dashboard-title">
+                    <span class="status-indicator status-online"></span>
+                    Original MARA Dashboard
+                </div>
+                <div class="dashboard-description">
+                    Full-featured MARA energy management dashboard with LLM integration, advanced analytics, and comprehensive system monitoring.
+                </div>
+            </a>
+        </div>
+        
+        <div class="demo-section">
+            <h3>🧪 Quick Demo Commands</h3>
+            <p>Run these commands to see the enhanced agents in action:</p>
+            <div style="background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 5px; margin: 1rem 0; font-family: monospace;">
+                <div>python3 demo_simple.py</div>
+                <div>python3 deploy_simple.py</div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Enhanced Agent System v1.0 | Deployed Successfully ✅</p>
+            <p>Real-time monitoring • Fault-tolerant design • Production-ready</p>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-refresh page every 30 seconds to check dashboard status
+        setTimeout(() => {
+            location.reload();
+        }, 30000);
+        
+        // Check dashboard availability
+        async function checkDashboards() {
+            const dashboards = [
+                { url: 'http://localhost:8501', element: '.dashboard-card:nth-child(3) .status-indicator' },
+                { url: 'http://localhost:8502', element: '.dashboard-card:nth-child(1) .status-indicator' },
+                { url: 'http://localhost:8503', element: '.dashboard-card:nth-child(2) .status-indicator' }
+            ];
+            
+            for (const dashboard of dashboards) {
+                try {
+                    const response = await fetch(dashboard.url, { method: 'HEAD', mode: 'no-cors' });
+                    // No-cors mode means we can't read status, but if it doesn't throw, it's likely accessible
+                } catch (error) {
+                    const indicator = document.querySelector(dashboard.element);
+                    if (indicator) {
+                        indicator.classList.remove('status-online');
+                        indicator.classList.add('status-offline');
+                    }
+                }
+            }
+        }
+        
+        // Check dashboard status on load
+        checkDashboards();
+    </script>
+</body>
+</html> 
