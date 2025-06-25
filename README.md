@@ -502,7 +502,7 @@ We welcome contributions! Please follow these guidelines:
 ### Development Setup
 ```bash
 # Clone your fork
-git clone https://github.com/yourusername/hackathon.git
+git clone https://github.com/jadenfix/hackathon.git
 cd hackathon
 
 # Create virtual environment
@@ -538,9 +538,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 For support and questions:
-- **Issues**: [GitHub Issues](https://github.com/yourusername/hackathon/issues)
+- **Issues**: [GitHub Issues](https://github.com/jadenfix/hackathon/issues)
 - **Documentation**: Check the [docs/](docs/) directory
-- **Email**: [your-email@example.com]
+- **Email**: [jadenfix123@gmail.com]
 
 ---
 
