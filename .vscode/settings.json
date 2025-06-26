@@ -1,0 +1,20 @@
+{
+    "python.pythonPath": "/opt/anaconda3/bin/python",
+    "python.defaultInterpreterPath": "/opt/anaconda3/bin/python",
+    "python.condaPath": "/opt/anaconda3/bin/conda",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "jupyter.jupyterServerType": "local",
+    "jupyter.notebookFileRoot": "${workspaceFolder}",
+    "files.associations": {
+        "*.py": "python"
+    },
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}",
+        "${workspaceFolder}/hackathon"
+    ],
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}",
+        "${workspaceFolder}/hackathon"
+    ]
+} 

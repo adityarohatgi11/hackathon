@@ -34,7 +34,7 @@ try:
         GRIDPILOT_AVAILABLE = True
     except ImportError:
         GRIDPILOT_AVAILABLE = False
-        print("⚠️ GridPilot-GT modules not available - gridpilot mode will not work")
+        print("WARNING: GridPilot-GT modules not available - gridpilot mode will not work")
         
     LLM_AVAILABLE = True
 except ImportError as e:
@@ -81,16 +81,16 @@ def test_llm_interface():
         interface = UnifiedLLMInterface()
         if interface.is_available():
             provider_info = interface.get_provider_info()
-            print(f"✅ Using {provider_info['provider']} LLM provider")
+            print(f"SUCCESS: Using {provider_info['provider']} LLM provider")
             return interface
         else:
-            print("⚠️ No LLM providers available")
+            print("WARNING: No LLM providers available")
     except Exception as e:
-        print(f"⚠️ Error with unified LLM interface: {e}")
+        print(f"WARNING: Error with unified LLM interface: {e}")
     
     # Fall back to mock interface
     interface = MockLLMInterface()
-    print("✅ Mock LLM interface loaded")
+    print("SUCCESS: Mock LLM interface loaded")
     return interface
 
 
@@ -114,7 +114,7 @@ def run_tests():
         response = interface.process_query(query)
         print(f"Response: {response[:100]}...")
     
-    print("\n✅ All tests completed successfully!")
+    print("\nSUCCESS: All tests completed successfully!")
 
 
 def run_gridpilot_gt(simulate: bool = False):
@@ -124,20 +124,20 @@ def run_gridpilot_gt(simulate: bool = False):
         simulate: If True, run in simulation mode with mock data
     """
     start_time = time.time()
-    print("🚀 GridPilot-GT Starting...")
+    print("GridPilot-GT Starting...")
     print(f"Simulation mode: {simulate}")
     print(f"Timestamp: {datetime.now()}")
     
     try:
         # Step 1: Get market data
-        print("\n📊 Fetching market data...")
+        print("\nFetching market data...")
         prices = get_prices()
         inventory = get_inventory()
         print(f"Retrieved {len(prices)} price records")
         print(f"Current power available: {inventory['power_available']} kW")
         
         # Step 2: Generate forecasts
-        print("\n🔮 Generating forecasts...")
+        print("\nGenerating forecasts...")
         forecaster = Forecaster(use_prophet=not simulate, use_ensemble=not simulate)
         if simulate:
             forecast = forecaster._predict_simple(prices, periods=24)  # type: ignore  # pylint: disable=protected-access
@@ -146,7 +146,7 @@ def run_gridpilot_gt(simulate: bool = False):
         print(f"Generated {len(forecast)} hour forecast")
         
         # Step 3: Optimize bids
-        print("\n💰 Optimizing bids...")
+        print("\nOptimizing bids...")
         current_price = prices['price'].iloc[-1] if len(prices) > 0 else 50.0
         soc = inventory['battery_soc']
         lambda_deg = 0.0002  # Battery degradation cost
@@ -162,19 +162,19 @@ def run_gridpilot_gt(simulate: bool = False):
         print(f"Generated bid vector with {len(bids)} periods")
         
         # Step 4: Run VCG auction
-        print("\n🏛️ Running VCG auction...")
+        print("\nRunning VCG auction...")
         allocation, payments = vcg_allocate(bids, inventory["power_total"])
         print(f"Allocation: {allocation}")
         print(f"Payments: {payments}")
         
         # Step 5: Calculate cooling requirements
-        print("\n❄️ Calculating cooling requirements...")
+        print("\nCalculating cooling requirements...")
         inference_power = allocation.get("inference", 0)  # Already in kW
         cooling_kw, cooling_metrics = cooling_for_gpu_kW(inference_power)
         print(f"Cooling required: {cooling_kw:.2f} kW (COP: {cooling_metrics['cop']:.2f})")
         
         # Step 6: Build dispatch payload
-        print("\n📤 Building dispatch payload...")
+        print("\nBuilding dispatch payload...")
         payload = build_payload(
             allocation=allocation,
             inventory=inventory,
@@ -185,19 +185,19 @@ def run_gridpilot_gt(simulate: bool = False):
         
         # Step 7: Submit to market (if not simulation)
         if not simulate:
-            print("\n🚀 Submitting to market...")
+            print("\nSubmitting to market...")
             response = submit_bid(payload)
             print(f"Market response: {response}")
         else:
-            print("\n🎯 SIMULATION - Would submit payload:")
+            print("\nSIMULATION - Would submit payload:")
             print(f"Total power: {payload['power_requirements']['total_power_kw']:.2f} kW")
             print(f"Constraints satisfied: {payload['constraints_satisfied']}")
             print(f"System utilization: {payload['system_state']['utilization']:.1%}")
         
-        print("\n✅ GridPilot-GT cycle completed successfully!")
+        print("\nSUCCESS: GridPilot-GT cycle completed successfully!")
         
         # Summary metrics
-        print("\n📈 Summary Metrics:")
+        print("\nSummary Metrics:")
         print(f"  • GPU Allocation: {sum(allocation.values()):.3f}")
         print(f"  • Total Power: {payload['power_requirements']['total_power_kw']:.1f} kW")
         print(f"  • Battery SOC: {soc:.1%}")
@@ -223,8 +223,8 @@ def run_gridpilot_gt(simulate: bool = False):
         }
         
     except Exception as e:
-        print(f"❌ Error in GridPilot-GT: {e}")
-        print(f"💡 Run with simulate=True for testing")
+        print(f"ERROR: Error in GridPilot-GT: {e}")
+        print(f"TIP: Run with simulate=True for testing")
         return {
             'success': False,
             'error': str(e),
@@ -275,7 +275,7 @@ def main():
     elif args.mode == "llm":
         # Interactive LLM mode
         interface = test_llm_interface()
-        print("\n🤖 Energy Management Assistant")
+        print("\nEnergy Management Assistant")
         print("Type 'quit' to exit")
         print("-" * 50)
         
@@ -297,7 +297,7 @@ def main():
     elif args.mode == "gridpilot":
         # Run GridPilot-GT energy trading system
         if not GRIDPILOT_AVAILABLE:
-            print("❌ GridPilot-GT modules not available")
+            print("ERROR: GridPilot-GT modules not available")
             print("Please ensure all GridPilot-GT dependencies are installed")
             sys.exit(1)
             
@@ -305,7 +305,7 @@ def main():
         result = run_gridpilot_gt(simulate=simulate_mode)
         
         if result['success']:
-            print("\n🎉 GridPilot-GT executed successfully!")
+            print("\nSUCCESS: GridPilot-GT executed successfully!")
             sys.exit(0)
         else:
             print("\n💥 GridPilot-GT failed!")

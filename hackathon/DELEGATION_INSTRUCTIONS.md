@@ -18,7 +18,7 @@ All foundational work is complete! The project scaffold is set up and the integr
 
 ### For Engineer B (Lane B: Bidding & MPC)
 ```bash
-git clone https://github.com/jadenfix/hackathon.git
+git clone https://github.com/adityarohatgi11/hackathon.git
 cd hackathon
 git checkout lane-b-bidding-mpc
 pip install -r requirements.txt
@@ -32,7 +32,7 @@ python main.py --simulate 1  # Verify system works
 
 ### For Engineer C (Lane C: Auction & Dispatch)
 ```bash
-git clone https://github.com/jadenfix/hackathon.git
+git clone https://github.com/adityarohatgi11/hackathon.git
 cd hackathon
 git checkout lane-c-auction-dispatch
 pip install -r requirements.txt
@@ -46,7 +46,7 @@ python main.py --simulate 1  # Verify system works
 
 ### For Engineer D (Lane D: UI & LLM)
 ```bash
-git clone https://github.com/jadenfix/hackathon.git
+git clone https://github.com/adityarohatgi11/hackathon.git
 cd hackathon
 git checkout lane-d-ui-llm
 pip install -r requirements.txt

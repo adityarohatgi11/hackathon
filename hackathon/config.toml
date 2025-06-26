@@ -28,7 +28,7 @@ MAX_POWER_KW = 1000.0
 
 # Dashboard Configuration
 [dashboard]
-title = "⚡ Energy Management Dashboard"
+title = "Energy Management Dashboard"
 port = 8501
 host = "localhost"
 theme = "light"

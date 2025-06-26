@@ -16,7 +16,7 @@ Lane A (Data & Forecasting) → Lane B (Game Theory & Optimization) → Lane C (
 ## 📊 Integration Results
 
 ### Lane A: Quantitative Forecasting System ✅
-**Contributors:** jadenfix, marcolikesai  
+**Contributors:** adityarohatgi11, jadenfix, marcolikesai  
 **Status:** Production Ready with Comprehensive Robustness Testing
 
 #### Key Features:
@@ -38,7 +38,7 @@ Lane A (Data & Forecasting) → Lane B (Game Theory & Optimization) → Lane C (
 - **Memory leak prevention** implemented
 
 ### Lane B: Game Theory & Portfolio Optimization ✅
-**Contributors:** adityarohatgi11, jadenfix  
+**Contributors:** adityarohatgi11, jadenfix, marcolikesai  
 **Status:** Production Ready with CVaR Integration
 
 #### Key Features:
@@ -55,7 +55,7 @@ Lane A (Data & Forecasting) → Lane B (Game Theory & Optimization) → Lane C (
 - **Portfolio Diversification**: Multi-service allocation optimization
 
 ### Lane C: High-Performance Dispatch Agent ✅
-**Contributors:** marcolikesai, jadenfix  
+**Contributors:** adityarohatgi11, jadenfix, marcolikesai  
 **Status:** Production Ready with <100ms Response Guarantee
 
 #### Key Features:
@@ -236,10 +236,10 @@ status = {
 ## 📞 Support & Maintenance
 
 ### Team Responsibilities
-- **Lane A (Forecasting)**: jadenfix, marcolikesai
+- **Lane A (Forecasting)**: jadenfix, marcolikesai, adityarohatgi11
 - **Lane B (Optimization)**: adityarohatgi11, jadenfix  
-- **Lane C (Dispatch)**: marcolikesai, jadenfix
-- **Integration**: jadenfix (lead integrator)
+- **Lane C (Dispatch)**: marcolikesai, jadenfix, adityarohatgi11
+- **Integration**: adityarohatgi11 (lead developer)
 
 ### Documentation
 - **API Documentation**: Comprehensive interface specs

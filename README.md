@@ -6,10 +6,10 @@
 
 A sophisticated energy trading and optimization platform that integrates real-time market data, advanced quantitative forecasting, and intelligent resource allocation for mining and compute operations.
 
-## 🔗 Demo Video
+## Demo Video
 
 [Click here to watch the demo on Loom](https://www.loom.com/share/25d4038c47e94de4866c095ae6d5c4c9?sid=bf76da66-001d-4a0c-ba37-1a6ee619677b)
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
@@ -25,7 +25,7 @@ A sophisticated energy trading and optimization platform that integrates real-ti
 - [Contributing](#contributing)
 - [License](#license)
 
-## 🎯 Overview
+## Overview
 
 GridPilot-GT is a comprehensive energy management system designed for the MARA Hackathon 2025. It provides real-time energy trading optimization, advanced forecasting capabilities, and intelligent resource allocation across mining and compute workloads.
 
@@ -37,27 +37,27 @@ GridPilot-GT is a comprehensive energy management system designed for the MARA H
 - **Resource Management**: Dynamic allocation across mining and compute assets
 - **Interactive Dashboard**: Real-time monitoring and control interface
 
-## ✨ Features
+## Features
 
-### 🏗️ Core System
+### Core System
 - **Multi-lane Architecture**: Modular design across data, optimization, dispatch, and UI
 - **Real-time Processing**: Sub-second decision making and allocation
 - **Robust Error Handling**: Automatic fallback mechanisms and graceful degradation
 - **Comprehensive Testing**: 30+ tests with 100% pass rate
 
-### 📊 Advanced Analytics
+### Advanced Analytics
 - **Quantitative Models**: GARCH volatility, Kalman filtering, Wavelet analysis
 - **Machine Learning Ensemble**: XGBoost, Gaussian Process, Prophet forecasting
 - **Feature Engineering**: 102+ technical indicators and market patterns
 - **Uncertainty Quantification**: Bootstrap sampling and model disagreement metrics
 
-### 🎮 Optimization Engine
+### Optimization Engine
 - **Model Predictive Control**: CVXPY-based power allocation optimization
 - **Game Theory**: Strategic bidding with market equilibrium analysis
 - **Portfolio Optimization**: Mean-variance and risk parity allocation
 - **Constraint Management**: Battery SOC, thermal limits, grid requirements
 
-## 🏗️ Architecture
+## Architecture
 
 The system operates across four integrated development lanes:
 
@@ -91,7 +91,7 @@ GridPilot-GT/
 - **LLM Integration**: Natural language system interaction
 - **Performance Analytics**: ROI tracking, efficiency metrics, market insights
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.8 or higher
@@ -126,9 +126,9 @@ python test_mara_api.py
 python main.py
 ```
 
-## 🎮 Demo & Interactive Features
+## Demo & Interactive Features
 
-### 🚀 Running the Demo
+### Running the Demo
 
 GridPilot includes a comprehensive interactive dashboard that demonstrates all system capabilities. Here's how to get started:
 
@@ -147,31 +147,31 @@ The dashboard will open automatically in your browser at `http://localhost:8501`
 
 The demo dashboard features four main tabs:
 
-**📊 Overview Tab**
+**Overview Tab**
 - Real-time energy consumption and price charts
 - System metrics and performance indicators
 - Optimization results display
 - Quick statistics and efficiency scores
 
-**💬 Chat Assistant Tab**
+**Chat Assistant Tab**
 - Interactive AI assistant powered by Claude
 - Ask questions about energy management
 - Get real-time advice on optimization strategies
 - Natural language explanations of system decisions
 
-**🤖 AI Insights Tab**
+**AI Insights Tab**
 - Auto-generated insights from energy data
 - Decision explanations with context
 - Market analysis and recommendations
 - Performance optimization suggestions
 
-**⚙️ System Status Tab**
+**System Status Tab**
 - Real-time system health monitoring
 - Power utilization metrics
 - Temperature and cooling status
 - Active alerts and system events
 
-### 🎯 Key Demo Features
+### Key Demo Features
 
 #### Real-Time Data Integration
 - **Live MARA API Data**: Real-time energy, hash, and token prices
@@ -179,7 +179,7 @@ The demo dashboard features four main tabs:
 - **Data Visualization**: Interactive charts showing 24-hour trends
 
 #### Advanced Optimization Demo
-1. **Click "🚀 Run Optimization"** in the sidebar
+1. **Click "Run Optimization"** in the sidebar
 2. **Watch Real-Time Processing**: See the system analyze market conditions
 3. **View Results**: Check allocation decisions and performance metrics
 4. **Understand Decisions**: Use the AI assistant to explain optimization choices
@@ -194,7 +194,7 @@ The demo dashboard features four main tabs:
 - **Performance Tracking**: Efficiency scores and optimization results
 - **Alert System**: Active warnings and system status updates
 
-### 🎮 Demo Scenarios
+### Demo Scenarios
 
 #### Scenario 1: Basic System Exploration
 1. Open the dashboard
@@ -204,7 +204,7 @@ The demo dashboard features four main tabs:
 
 #### Scenario 2: Optimization Demonstration
 1. Go to the Overview tab
-2. Click "🚀 Run Optimization" in the sidebar
+2. Click "Run Optimization" in the sidebar
 3. Watch the optimization process
 4. Review the results in the "Enhanced GridPilot Optimization Results" section
 5. Ask the AI assistant to explain the decisions
@@ -221,7 +221,7 @@ The demo dashboard features four main tabs:
 3. Check power utilization and efficiency metrics
 4. Review system events and alerts
 
-### 🔧 Demo Configuration
+### Demo Configuration
 
 #### API Integration (Optional)
 For full demo experience with real data:
@@ -239,7 +239,7 @@ The system runs in demo mode by default with:
 - Mock AI responses (if Claude API unavailable)
 - Full dashboard functionality
 
-### 📊 Demo Data Sources
+### Demo Data Sources
 
 The demo uses multiple data sources:
 - **Real MARA API**: When available and configured
@@ -247,7 +247,7 @@ The demo uses multiple data sources:
 - **Simulated Optimization**: Advanced stochastic models
 - **Mock AI Responses**: When Claude API unavailable
 
-### 🎯 Demo Learning Objectives
+### Demo Learning Objectives
 
 After running the demo, you should understand:
 - **Real-time Energy Trading**: How the system optimizes power allocation
@@ -256,7 +256,7 @@ After running the demo, you should understand:
 - **System Architecture**: Four-lane development structure
 - **Market Integration**: MARA API connectivity and fallback mechanisms
 
-### 🚀 Next Steps After Demo
+### Next Steps After Demo
 
 1. **Explore the Code**: Review the implementation in `hackathon/` directory
 2. **Run Tests**: Execute `pytest tests/ -v` to see system validation
@@ -266,7 +266,7 @@ After running the demo, you should understand:
 
 ---
 
-## 📦 Installation
+## Installation
 
 ### System Requirements
 - **Python**: 3.8 or higher
@@ -320,7 +320,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### API Configuration
 Create or update `config.toml` with your MARA API credentials:
@@ -343,7 +343,7 @@ export SITE_NAME="your_site_name"
 export SITE_POWER_KW="1000000"
 ```
 
-## 🎮 Usage
+## Usage
 
 ### Starting the System
 ```bash
@@ -370,7 +370,7 @@ python test_mara_api.py
 pytest tests/ -v
 ```
 
-## 🔌 API Integration
+## API Integration
 
 ### MARA Hackathon 2025 API
 
@@ -421,7 +421,7 @@ allocation = client.allocate_machines({
 })
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Running Tests
 ```bash
@@ -450,7 +450,7 @@ pytest tests/ --cov=hackathon --cov-report=html
 - **Robustness testing** for missing data, extreme outliers
 - **End-to-end simulation** with complete market cycles
 
-## 🛠️ Development
+## Development
 
 ### Project Structure
 ```
@@ -488,7 +488,7 @@ mypy hackathon/
 5. **Run** the test suite
 6. **Submit** a pull request
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please follow these guidelines:
 
@@ -502,7 +502,7 @@ We welcome contributions! Please follow these guidelines:
 ### Development Setup
 ```bash
 # Clone your fork
-git clone https://github.com/jadenfix/hackathon.git
+git clone https://github.com/adityarohatgi11/hackathon.git
 cd hackathon
 
 # Create virtual environment
@@ -525,23 +525,25 @@ pytest tests/ -v
 - Write comprehensive docstrings
 - Include tests for new functionality
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **MARA Hackathon 2025** for providing the API and challenge
 - **Open source community** for the excellent libraries used in this project
 - **Contributors** who have helped improve the system
 
-## 📞 Support
+## Support
 
 For support and questions:
-- **Issues**: [GitHub Issues](https://github.com/jadenfix/hackathon/issues)
+- **Issues**: [GitHub Issues](https://github.com/adityarohatgi11/hackathon/issues)
 - **Documentation**: Check the [docs/](docs/) directory
-- **Email**: [jadenfix123@gmail.com]
+- **Email**: [aditya.rohatgi11@gmail.com]
+- **LinkedIn**: [https://www.linkedin.com/in/adityarohatgi/](https://www.linkedin.com/in/adityarohatgi/)
+- **GitHub**: [https://github.com/adityarohatgi11](https://github.com/adityarohatgi11)
 
 ---
 
-**GridPilot-GT is ready for the MARA Hackathon 2025! 🚀**
+**GridPilot-GT is ready for the MARA Hackathon 2025!**

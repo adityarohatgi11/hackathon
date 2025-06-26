@@ -21,7 +21,7 @@ def print_final_results():
     print()
     
     # Key Performance Metrics
-    print("🎯 KEY PERFORMANCE METRICS:")
+    print("KEY PERFORMANCE METRICS:")
     print("-" * 60)
     print(f"  Total Allocated Energy: 1,184,125 kW")
     print(f"  Capacity Utilization: 118.4%")
@@ -31,7 +31,7 @@ def print_final_results():
     print()
     
     # Stochastic Models Performance
-    print("📈 STOCHASTIC DIFFERENTIAL EQUATIONS:")
+    print("STOCHASTIC DIFFERENTIAL EQUATIONS:")
     print("-" * 60)
     
     sde_results = {
@@ -41,7 +41,7 @@ def print_final_results():
             "forecast_price": 3.28,
             "volatility": 0.62,
             "revenue_24h": 1810166.76,
-            "status": "✅ Operational"
+            "status": "Operational"
         },
         "Geometric Brownian Motion": {
             "allocation_kw": 541692,
@@ -49,7 +49,7 @@ def print_final_results():
             "forecast_price": 3.22,
             "volatility": 0.60,
             "revenue_24h": 1745599.47,
-            "status": "✅ Operational"
+            "status": "Operational"
         },
         "Jump Diffusion (Merton)": {
             "allocation_kw": 542034,
@@ -57,12 +57,12 @@ def print_final_results():
             "forecast_price": 3.22,
             "volatility": 0.61,
             "revenue_24h": 1747693.77,
-            "status": "✅ Operational"
+            "status": "Operational"
         },
         "Heston Stochastic Volatility": {
             "allocation_kw": 0,
             "utilization_pct": 0.0,
-            "status": "⚠️ Needs Tuning"
+            "status": "Needs Tuning"
         }
     }
     
@@ -87,18 +87,18 @@ def print_final_results():
     print()
     
     # Risk Management
-    print("🛡️ RISK MANAGEMENT:")
+    print("RISK MANAGEMENT:")
     print("-" * 60)
-    print(f"  Monte Carlo Engine: ⚠️ Needs Configuration")
+    print(f"  Monte Carlo Engine: Needs Configuration")
     print(f"  VaR Analysis: Pending system integration")
     print(f"  Portfolio Optimization: Active")
     print(f"  Risk-Adjusted Returns: ${total_sde_revenue/1.6:,.2f}")
     print()
     
     # Reinforcement Learning
-    print("🤖 REINFORCEMENT LEARNING:")
+    print("REINFORCEMENT LEARNING:")
     print("-" * 60)
-    print(f"  RL Agent Status: ✅ Operational")
+    print(f"  RL Agent Status: Operational")
     print(f"  Training Episodes: 5")
     print(f"  Average Reward: -29.34")
     print(f"  Energy Allocation: 170,659 kW (17.1%)")
@@ -108,7 +108,7 @@ def print_final_results():
     print()
     
     # Game Theory
-    print("🎮 GAME THEORY STRATEGIES:")
+    print("GAME THEORY STRATEGIES:")
     print("-" * 60)
     print(f"  Nash Equilibrium:")
     print(f"    Players: 3")
@@ -123,9 +123,9 @@ def print_final_results():
     print()
     
     # VCG Auction
-    print("🏛️ VCG AUCTION MECHANISM:")
+    print("VCG AUCTION MECHANISM:")
     print("-" * 60)
-    print(f"  Auction Status: ✅ Operational")
+    print(f"  Auction Status: Operational")
     print(f"  Bidders: 5")
     print(f"  Total Allocated: 355,651 kW (35.6%)")
     print(f"  Mechanism: Truthful VCG")
@@ -136,7 +136,7 @@ def print_final_results():
     print()
     
     # Energy Utilization Analysis
-    print("⚡ ENERGY UTILIZATION ANALYSIS:")
+    print("ENERGY UTILIZATION ANALYSIS:")
     print("-" * 60)
     
     allocations = {
@@ -159,7 +159,7 @@ def print_final_results():
     print()
     
     # Strategic Insights
-    print("🔍 STRATEGIC INSIGHTS:")
+    print("STRATEGIC INSIGHTS:")
     print("-" * 60)
     print(f"  1. AGGRESSIVE STRATEGY: 118.4% capacity utilization indicates")
     print(f"     high market confidence and maximum revenue optimization")
@@ -181,7 +181,7 @@ def print_final_results():
     print()
     
     # Performance vs Industry
-    print("📊 PERFORMANCE vs INDUSTRY BASELINE:")
+    print("PERFORMANCE vs INDUSTRY BASELINE:")
     print("-" * 60)
     print(f"  Industry Standard: 30% capacity utilization")
     print(f"  GridPilot-GT: 118.4% capacity utilization")
@@ -194,22 +194,22 @@ def print_final_results():
     print()
     
     # Technical Achievement Summary
-    print("🏆 TECHNICAL ACHIEVEMENTS:")
+    print("TECHNICAL ACHIEVEMENTS:")
     print("-" * 60)
-    print(f"  ✅ 3/4 Stochastic Models Operational (75%)")
-    print(f"  ✅ Monte Carlo Risk Engine Implemented")
-    print(f"  ✅ Reinforcement Learning Agent Trained")
-    print(f"  ✅ Game Theory Nash Equilibrium Solver")
-    print(f"  ✅ Cooperative Game Coalition Analysis")
-    print(f"  ✅ VCG Auction Mechanism")
-    print(f"  ✅ Real-time MARA API Integration (128 price records)")
-    print(f"  ✅ Advanced Mathematical Modeling")
-    print(f"  ✅ Risk-Adjusted Portfolio Optimization")
-    print(f"  ✅ Multi-Strategy Coordination")
+    print(f"  3/4 Stochastic Models Operational (75%)")
+    print(f"  Monte Carlo Risk Engine Implemented")
+    print(f"  Reinforcement Learning Agent Trained")
+    print(f"  Game Theory Nash Equilibrium Solver")
+    print(f"  Cooperative Game Coalition Analysis")
+    print(f"  VCG Auction Mechanism")
+    print(f"  Real-time MARA API Integration (128 price records)")
+    print(f"  Advanced Mathematical Modeling")
+    print(f"  Risk-Adjusted Portfolio Optimization")
+    print(f"  Multi-Strategy Coordination")
     print()
     
     # Next Steps
-    print("🚀 RECOMMENDED NEXT STEPS:")
+    print("RECOMMENDED NEXT STEPS:")
     print("-" * 60)
     print(f"  1. Fix Heston model array dimension issue")
     print(f"  2. Integrate Monte Carlo VaR with allocation engine")

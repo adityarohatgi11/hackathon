@@ -347,7 +347,7 @@ jobs:
             
             Please review the benchmark results and investigate potential causes.
             
-            /cc @jadenfix @eng-team`,
+            /cc @adityarohatgi11 @eng-team`,
             labels: ['performance', 'regression', 'priority-high']
           });
 
