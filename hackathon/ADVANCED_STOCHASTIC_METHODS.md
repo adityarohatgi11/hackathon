@@ -1,5 +1,6 @@
 # Advanced Stochastic Methods for GridPilot-GT
 
+
 ## Overview
 
 This document describes the cutting-edge stochastic mathematical models and optimization techniques implemented in GridPilot-GT to enhance quantitative forecasting and game theory strategies. These advanced methods provide superior uncertainty quantification, risk management, and adaptive optimization capabilities.
