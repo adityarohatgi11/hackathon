@@ -3,6 +3,7 @@
 # GridPilot-GT Environment Manager
 # Helps switch between conda environments and test dependencies
 
+
 echo "======================================"
 echo "Current Environment:"
 echo "======================================"
