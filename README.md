@@ -545,5 +545,3 @@ For support and questions:
 - **GitHub**: [https://github.com/adityarohatgi11](https://github.com/adityarohatgi11)
 
 ---
-
-**GridPilot-GT is ready for the MARA Hackathon 2025!**
